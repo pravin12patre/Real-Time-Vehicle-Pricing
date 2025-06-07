@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Car, TrendingUp, TrendingDown, DollarSign, Calendar, MapPin, Users, Settings, BarChart3, Activity } from 'lucide-react';
+import LoginPage from './LoginPage'; // Adjust path if created elsewhere
+import RegisterPage from './RegisterPage'; // Adjust path
 
 const VehiclePricingSystem = () => {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [pricingStrategy, setPricingStrategy] = useState('dynamic');
   const [marketData, setMarketData] = useState({});
+  const [currentUser, setCurrentUser] = useState(null);
+  const [view, setView] = useState('main'); // 'main', 'login', 'register'
   const [realTimeFactors, setRealTimeFactors] = useState({
     demandMultiplier: 1.0,
     seasonalAdjustment: 1.0,
@@ -15,16 +19,23 @@ const VehiclePricingSystem = () => {
 
   // Fetch vehicle data on component mount
   useEffect(() => {
-    fetch('/vehicleInventory.json') // Assuming vehicleInventory.json is in the public folder or root
-      .then(response => {
+    const fetchVehicles = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/vehicles'); // New API endpoint
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error(`HTTP error! status: ${response.status} while fetching from /api/vehicles`);
         }
-        return response.json();
-      })
-      .then(data => setInventoryVehicles(data))
-      .catch(error => console.error("Could not fetch vehicle inventory:", error));
-  }, []);
+        const data = await response.json();
+        setInventoryVehicles(data);
+      } catch (error) {
+        console.error("Could not fetch vehicles from API:", error);
+        // Optionally, set an error state here to display a message to the user
+        // For example: setErrorState("Failed to load vehicle data. Please try again later.");
+      }
+    };
+
+    fetchVehicles();
+  }, []); // Empty dependency array ensures this runs once on mount
 
   // Pricing algorithm
   const calculateDynamicPrice = useCallback((vehicle, currentPricingStrategy) => {
@@ -91,6 +102,21 @@ const VehiclePricingSystem = () => {
     return Math.round(price);
   }, [realTimeFactors]);
 
+  const handleLoginSuccess = (username) => {
+    setCurrentUser(username);
+    setView('main'); // Switch back to main view after login
+  };
+  const handleRegisterSuccess = (username) => {
+    // setCurrentUser(username); // Or prompt to login
+    setView('login'); // Switch to login view after registration
+    alert('Registration successful. Please log in.');
+  };
+  const handleLogout = () => {
+    localStorage.removeItem('vehicleAuthToken');
+    setCurrentUser(null);
+    setView('main');
+  };
+
   // Simulate real-time market changes
   useEffect(() => {
     const interval = setInterval(() => {
@@ -143,12 +169,29 @@ const VehiclePricingSystem = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-blue-600 rounded-xl">
+      {view === 'login' && <LoginPage onLoginSuccess={handleLoginSuccess} />}
+      {view === 'register' && <RegisterPage onRegisterSuccess={handleRegisterSuccess} />}
+      {view === 'main' && (
+      <>
+        <div style={{ padding: '10px', textAlign: 'right', maxWidth: '7xl', margin: 'auto' }}>
+          {currentUser ? (
+            <>
+              <span style={{ marginRight: '10px' }}>Logged in as: {currentUser} </span>
+              <button onClick={handleLogout} style={{ padding: '5px 10px', cursor: 'pointer' }}>Logout</button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => setView('login')} style={{ padding: '5px 10px', cursor: 'pointer' }}>Login</button>
+              <button onClick={() => setView('register')} style={{ marginLeft: '10px', padding: '5px 10px', cursor: 'pointer' }}>Register</button>
+            </>
+          )}
+        </div>
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-3 bg-blue-600 rounded-xl">
                 <Car className="h-8 w-8 text-white" />
               </div>
               <div>
@@ -428,8 +471,10 @@ const VehiclePricingSystem = () => {
               </div>
             </div>
           </div>
+          </div>
         </div>
-      </div>
+      </>
+      )}
     </div>
   );
 };
