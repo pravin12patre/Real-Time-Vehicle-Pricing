@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Car, TrendingUp, TrendingDown, DollarSign, Calendar, MapPin, Users, Settings, BarChart3, Activity } from 'lucide-react';
-import LoginPage from './LoginPage'; // Adjust path if created elsewhere
-import RegisterPage from './RegisterPage'; // Adjust path
+import { Car, TrendingUp, TrendingDown, DollarSign, Calendar, MapPin, Users, Settings, BarChart3, Activity, PlusCircle, Edit3, Trash2 } from 'lucide-react'; // Added icons
+import LoginPage from './LoginPage';
+import RegisterPage from './RegisterPage';
+import AddVehiclePage from './AddVehiclePage'; // Import AddVehiclePage
+import EditVehiclePage from './EditVehiclePage'; // Import EditVehiclePage
+import { apiService } from './apiService'; // Import apiService
 
 const VehiclePricingSystem = () => {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [pricingStrategy, setPricingStrategy] = useState('dynamic');
   const [marketData, setMarketData] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
-  const [view, setView] = useState('main'); // 'main', 'login', 'register'
+  const [view, setView] = useState('main'); // 'main', 'login', 'register', 'addVehicle', 'editVehicle'
   const [realTimeFactors, setRealTimeFactors] = useState({
     demandMultiplier: 1.0,
     seasonalAdjustment: 1.0,
@@ -16,26 +19,24 @@ const VehiclePricingSystem = () => {
     inventoryLevel: 1.0
   });
   const [inventoryVehicles, setInventoryVehicles] = useState([]);
+  const [vehicleIdToEdit, setVehicleIdToEdit] = useState(null);
+  const [fetchError, setFetchError] = useState(null);
 
-  // Fetch vehicle data on component mount
+
+  const fetchInventoryVehicles = useCallback(async () => {
+    setFetchError(null);
+    try {
+      const data = await apiService.get('/vehicles');
+      setInventoryVehicles(data);
+    } catch (error) {
+      console.error("Could not fetch vehicles from API:", error);
+      setFetchError(error.message || "Failed to load vehicles.");
+    }
+  }, []);
+
   useEffect(() => {
-    const fetchVehicles = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/vehicles'); // New API endpoint
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status} while fetching from /api/vehicles`);
-        }
-        const data = await response.json();
-        setInventoryVehicles(data);
-      } catch (error) {
-        console.error("Could not fetch vehicles from API:", error);
-        // Optionally, set an error state here to display a message to the user
-        // For example: setErrorState("Failed to load vehicle data. Please try again later.");
-      }
-    };
-
-    fetchVehicles();
-  }, []); // Empty dependency array ensures this runs once on mount
+    fetchInventoryVehicles();
+  }, [fetchInventoryVehicles]);
 
   // Pricing algorithm
   const calculateDynamicPrice = useCallback((vehicle, currentPricingStrategy) => {
@@ -104,17 +105,43 @@ const VehiclePricingSystem = () => {
 
   const handleLoginSuccess = (username) => {
     setCurrentUser(username);
-    setView('main'); // Switch back to main view after login
+    setView('main');
+    fetchInventoryVehicles();
   };
   const handleRegisterSuccess = (username) => {
-    // setCurrentUser(username); // Or prompt to login
-    setView('login'); // Switch to login view after registration
+    setView('login');
     alert('Registration successful. Please log in.');
   };
   const handleLogout = () => {
     localStorage.removeItem('vehicleAuthToken');
     setCurrentUser(null);
     setView('main');
+    setSelectedVehicle(null);
+    setMarketData({});
+    setVehicleIdToEdit(null); // Clear vehicleIdToEdit on logout
+  };
+
+  // CRUD view handlers
+  const openAddVehiclePage = () => setView('addVehicle');
+  const openEditVehiclePage = (id) => { setVehicleIdToEdit(id); setView('editVehicle'); };
+  const handleVehicleAdded = () => { fetchInventoryVehicles(); setView('main'); };
+  const handleVehicleUpdated = () => { fetchInventoryVehicles(); setVehicleIdToEdit(null); setView('main'); };
+  const handleCrudCancel = () => { setVehicleIdToEdit(null); setView('main'); };
+
+  const handleDeleteVehicle = async (id) => {
+    if (window.confirm('Are you sure you want to delete this vehicle?')) {
+      try {
+        await apiService.delete(`/vehicles/${id}`);
+        alert('Vehicle deleted successfully.');
+        fetchInventoryVehicles();
+        if(selectedVehicle && selectedVehicle._id === id) {
+          setSelectedVehicle(null);
+        }
+      } catch (error) {
+        alert(`Failed to delete vehicle: ${error.message}`);
+        console.error('Delete vehicle error:', error);
+      }
+    }
   };
 
   // Simulate real-time market changes
@@ -128,14 +155,14 @@ const VehiclePricingSystem = () => {
       }));
 
       // Update price history for selected vehicle
-      if (selectedVehicle) {
+      if (selectedVehicle && selectedVehicle._id) { // Check if _id exists
         const newPrice = calculateDynamicPrice(selectedVehicle, pricingStrategy);
         const newPriceEntry = { price: newPrice, timestamp: new Date().toLocaleTimeString() };
 
         setMarketData(prevMarketData => {
-          const currentHistory = prevMarketData[selectedVehicle.id] || [];
-          const updatedHistory = [...currentHistory, newPriceEntry].slice(-5); // Keep last 5 entries
-          return { ...prevMarketData, [selectedVehicle.id]: updatedHistory };
+          const currentHistory = prevMarketData[selectedVehicle._id] || []; // Use _id
+          const updatedHistory = [...currentHistory, newPriceEntry].slice(-5);
+          return { ...prevMarketData, [selectedVehicle._id]: updatedHistory }; // Use _id
         });
       }
     }, 3000);
@@ -167,31 +194,35 @@ const VehiclePricingSystem = () => {
     return 'text-green-600 bg-green-50';
   };
 
+  if (view === 'login') return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  if (view === 'register') return <RegisterPage onRegisterSuccess={handleRegisterSuccess} />;
+  if (view === 'addVehicle') return <AddVehiclePage onVehicleAdded={handleVehicleAdded} onCancel={handleCrudCancel} />;
+  if (view === 'editVehicle') return <EditVehiclePage vehicleIdToEdit={vehicleIdToEdit} onVehicleUpdated={handleVehicleUpdated} onCancel={handleCrudCancel} />;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
-      {view === 'login' && <LoginPage onLoginSuccess={handleLoginSuccess} />}
-      {view === 'register' && <RegisterPage onRegisterSuccess={handleRegisterSuccess} />}
-      {view === 'main' && (
-      <>
-        <div style={{ padding: '10px', textAlign: 'right', maxWidth: '7xl', margin: 'auto' }}>
-          {currentUser ? (
-            <>
-              <span style={{ marginRight: '10px' }}>Logged in as: {currentUser} </span>
-              <button onClick={handleLogout} style={{ padding: '5px 10px', cursor: 'pointer' }}>Logout</button>
-            </>
-          ) : (
-            <>
-              <button onClick={() => setView('login')} style={{ padding: '5px 10px', cursor: 'pointer' }}>Login</button>
-              <button onClick={() => setView('register')} style={{ marginLeft: '10px', padding: '5px 10px', cursor: 'pointer' }}>Register</button>
-            </>
-          )}
-        </div>
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="p-3 bg-blue-600 rounded-xl">
+      {/* User/Auth Controls */}
+      <div style={{ padding: '10px', textAlign: 'right', maxWidth: 'calc(100% - 2rem)', margin: '0 auto 1rem auto' }} className="max-w-7xl">
+        {currentUser ? (
+          <>
+            <span style={{ marginRight: '10px' }}>Logged in as: {currentUser} </span>
+            <button onClick={handleLogout} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px' }}>Logout</button>
+          </>
+        ) : (
+          <>
+            <button onClick={() => setView('login')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}>Login</button>
+            <button onClick={() => setView('register')} style={{ marginLeft: '10px', padding: '8px 12px', cursor: 'pointer', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px' }}>Register</button>
+          </>
+        )}
+      </div>
+
+      {/* Main Content Area */}
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-3 bg-blue-600 rounded-xl">
                 <Car className="h-8 w-8 text-white" />
               </div>
               <div>
@@ -217,14 +248,23 @@ const VehiclePricingSystem = () => {
           {/* Vehicle Inventory */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-xl p-6">
+              {/* Moved Add Vehicle Button and Pricing Strategy Dropdown into this div */}
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Vehicle Inventory</h2>
-                <div className="flex items-center space-x-2">
+                 <h2 className="text-2xl font-bold text-gray-900">Vehicle Inventory</h2>
+                 <div className="flex items-center space-x-2">
+                  {currentUser && (
+                    <button
+                      onClick={openAddVehiclePage}
+                      className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md flex items-center transition ease-in-out duration-150"
+                    >
+                      <PlusCircle className="h-5 w-5 mr-2" /> Add Vehicle
+                    </button>
+                  )}
                   <Settings className="h-5 w-5 text-gray-400" />
                   <select 
                     value={pricingStrategy} 
                     onChange={(e) => setPricingStrategy(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" // Adjusted padding
                   >
                     <option value="dynamic">Dynamic Pricing</option>
                     <option value="competitive">Competitive Pricing</option>
@@ -233,27 +273,29 @@ const VehiclePricingSystem = () => {
                 </div>
               </div>
 
+              {fetchError && <div className="text-red-500 bg-red-100 p-3 rounded-lg mb-4">{fetchError}</div>}
+
               <div className="grid gap-4">
                 {inventoryVehicles.map((vehicle) => {
-                  // Pass pricingStrategy to getPriceChange here
                   const priceInfo = getPriceChange(vehicle, pricingStrategy);
                   return (
                     <div
-                      key={vehicle.id}
+                      key={vehicle._id} // Use _id for MongoDB IDs
                       className={`p-6 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:shadow-lg ${
-                        selectedVehicle?.id === vehicle.id
+                        selectedVehicle?._id === vehicle._id
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                       onClick={() => {
                         setSelectedVehicle(vehicle);
-                        // Add initial price to history on selection
-                        const initialPrice = calculateDynamicPrice(vehicle, pricingStrategy);
-                        const initialPriceEntry = { price: initialPrice, timestamp: new Date().toLocaleTimeString() };
-                        setMarketData(prevMarketData => ({
-                          ...prevMarketData,
-                          [vehicle.id]: [initialPriceEntry] // Start new history or overwrite existing
-                        }));
+                        if (vehicle._id) { // Ensure _id is present for history key
+                          const initialPrice = calculateDynamicPrice(vehicle, pricingStrategy);
+                          const initialPriceEntry = { price: initialPrice, timestamp: new Date().toLocaleTimeString() };
+                          setMarketData(prevMarketData => ({
+                            ...prevMarketData,
+                            [vehicle._id]: [initialPriceEntry]
+                          }));
+                        }
                       }}
                     >
                       <div className="flex items-center justify-between">
@@ -267,23 +309,11 @@ const VehiclePricingSystem = () => {
                             </span>
                           </div>
                           
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                            <div className="flex items-center space-x-2">
-                              <MapPin className="h-4 w-4 text-gray-400" />
-                              <span className="text-sm text-gray-600">{vehicle.location}</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Users className={`h-4 w-4 rounded px-2 py-1 text-xs font-medium ${getDemandColor(vehicle.demand)}`} />
-                              <span className="text-sm text-gray-600">Demand: {vehicle.demand}%</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <BarChart3 className={`h-4 w-4 rounded px-2 py-1 text-xs font-medium ${getInventoryColor(vehicle.inventory)}`} />
-                              <span className="text-sm text-gray-600">Stock: {vehicle.inventory}</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Calendar className="h-4 w-4 text-gray-400" />
-                              <span className="text-sm text-gray-600">Updated: Now</span>
-                            </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm text-gray-600">
+                            <div><MapPin className="h-4 w-4 inline mr-1 text-gray-400" />{vehicle.location}</div>
+                            <div><Users className={`h-4 w-4 inline mr-1 ${getDemandColor(vehicle.demand).split(' ')[0]}`} />Demand: {vehicle.demand}%</div>
+                            <div><BarChart3 className={`h-4 w-4 inline mr-1 ${getInventoryColor(vehicle.inventory).split(' ')[0]}`} />Stock: {vehicle.inventory}</div>
+                            <div><Calendar className="h-4 w-4 inline mr-1 text-gray-400" />Updated: Now</div>
                           </div>
                         </div>
 
@@ -306,6 +336,12 @@ const VehiclePricingSystem = () => {
                           <div className="text-sm text-gray-500">
                             Base: ${vehicle.basePrice.toLocaleString()}
                           </div>
+                           {currentUser && (
+                            <div className="mt-3 space-x-2">
+                              <button onClick={(e) => { e.stopPropagation(); openEditVehiclePage(vehicle._id); }} className="text-xs bg-yellow-400 hover:bg-yellow-500 text-white font-semibold py-1 px-2 rounded flex items-center shadow transition ease-in-out duration-150"><Edit3 size={12} className="mr-1"/> Edit</button>
+                              <button onClick={(e) => { e.stopPropagation(); handleDeleteVehicle(vehicle._id); }} className="text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded flex items-center shadow transition ease-in-out duration-150"><Trash2 size={12} className="mr-1"/> Delete</button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -320,121 +356,60 @@ const VehiclePricingSystem = () => {
             {/* Market Factors */}
             <div className="bg-white rounded-2xl shadow-xl p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-4">Market Factors</h3>
-              
               <div className="space-y-4">
+                {/* Factor items */}
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-gray-700">Demand Multiplier</span>
                     <span className="text-sm text-gray-500">{(realTimeFactors.demandMultiplier * 100).toFixed(1)}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${((realTimeFactors.demandMultiplier - 0.8) / 0.5) * 100}%` }}
-                    ></div>
-                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-blue-600 h-2 rounded-full transition-all duration-300" style={{ width: `${((realTimeFactors.demandMultiplier - 0.8) / 0.5) * 100}%` }}></div></div>
                 </div>
-
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-gray-700">Seasonal Adjustment</span>
                     <span className="text-sm text-gray-500">{(realTimeFactors.seasonalAdjustment * 100).toFixed(1)}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${((realTimeFactors.seasonalAdjustment - 0.9) / 0.3) * 100}%` }}
-                    ></div>
-                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-green-600 h-2 rounded-full transition-all duration-300" style={{ width: `${((realTimeFactors.seasonalAdjustment - 0.9) / 0.3) * 100}%` }}></div></div>
                 </div>
-
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-gray-700">Competitor Pricing</span>
                     <span className="text-sm text-gray-500">{(realTimeFactors.competitorPricing * 100).toFixed(1)}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${((realTimeFactors.competitorPricing - 0.85) / 0.3) * 100}%` }}
-                    ></div>
-                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-purple-600 h-2 rounded-full transition-all duration-300" style={{ width: `${((realTimeFactors.competitorPricing - 0.85) / 0.3) * 100}%` }}></div></div>
                 </div>
-
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-gray-700">Inventory Level</span>
                     <span className="text-sm text-gray-500">{(realTimeFactors.inventoryLevel * 100).toFixed(1)}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-orange-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${((realTimeFactors.inventoryLevel - 0.9) / 0.2) * 100}%` }}
-                    ></div>
-                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-orange-600 h-2 rounded-full transition-all duration-300" style={{ width: `${((realTimeFactors.inventoryLevel - 0.9) / 0.2) * 100}%` }}></div></div>
                 </div>
               </div>
             </div>
 
             {/* Selected Vehicle Details */}
-            {selectedVehicle && (
+            {selectedVehicle && selectedVehicle._id && ( // Ensure selectedVehicle and _id exist
               <div className="bg-white rounded-2xl shadow-xl p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Pricing Breakdown</h3>
-                
                 <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Base Price</span>
-                    <span className="font-medium">${selectedVehicle.basePrice.toLocaleString()}</span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Demand Adjustment</span>
-                    <span className="font-medium text-blue-600">
-                      {selectedVehicle.demand >= 75 ? '+' : ''}
-                      {((selectedVehicle.demand / 100 - 0.75) * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Inventory Impact</span>
-                    <span className="font-medium text-orange-600">
-                      {selectedVehicle.inventory <= 15 ? '+' : '-'}
-                      {Math.abs(((15 - selectedVehicle.inventory) / 35) * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Market Factors</span>
-                    <span className="font-medium text-purple-600">
-                      {((Object.values(realTimeFactors).reduce((a, b) => a * b, 1) - 1) * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  
+                  <div className="flex justify-between"><span className="text-gray-600">Base Price</span><span className="font-medium">${selectedVehicle.basePrice.toLocaleString()}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-600">Demand Adjustment</span><span className="font-medium text-blue-600">{selectedVehicle.demand >= 75 ? '+' : ''}{((selectedVehicle.demand / 100 - 0.75) * 100).toFixed(1)}%</span></div>
+                  <div className="flex justify-between"><span className="text-gray-600">Inventory Impact</span><span className="font-medium text-orange-600">{selectedVehicle.inventory <= 15 ? '+' : '-'}{Math.abs(((15 - selectedVehicle.inventory) / 35) * 100).toFixed(1)}%</span></div>
+                  <div className="flex justify-between"><span className="text-gray-600">Market Factors</span><span className="font-medium text-purple-600">{((Object.values(realTimeFactors).reduce((a, b) => a * b, 1) - 1) * 100).toFixed(1)}%</span></div>
                   <hr className="my-3" />
-                  
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Final Price</span>
-                    <span className="text-green-600">
-                      {/* Pass pricingStrategy to calculateDynamicPrice here */}
-                      ${calculateDynamicPrice(selectedVehicle, pricingStrategy).toLocaleString()}
-                    </span>
-                  </div>
-
+                  <div className="flex justify-between text-lg font-bold"><span>Final Price</span><span className="text-green-600">${calculateDynamicPrice(selectedVehicle, pricingStrategy).toLocaleString()}</span></div>
                   {/* Price History Display */}
                   <div className="mt-4 pt-4 border-t">
                     <h4 className="text-md font-semibold text-gray-800 mb-2">Recent Price History:</h4>
-                    {marketData[selectedVehicle.id] && marketData[selectedVehicle.id].length > 0 ? (
+                    {marketData[selectedVehicle._id] && marketData[selectedVehicle._id].length > 0 ? (
                       <ul className="space-y-1 text-sm text-gray-600">
-                        {marketData[selectedVehicle.id].map((entry, index) => (
-                          <li key={index} className="flex justify-between">
-                            <span>{entry.timestamp}</span>
-                            <span>${entry.price.toLocaleString()}</span>
-                          </li>
+                        {marketData[selectedVehicle._id].map((entry, index) => (
+                          <li key={index} className="flex justify-between"><span>{entry.timestamp}</span><span>${entry.price.toLocaleString()}</span></li>
                         ))}
                       </ul>
-                    ) : (
-                      <p className="text-sm text-gray-500">No price history yet.</p>
-                    )}
+                    ) : (<p className="text-sm text-gray-500">No price history yet.</p>)}
                   </div>
                 </div>
               </div>
@@ -443,38 +418,16 @@ const VehiclePricingSystem = () => {
             {/* Quick Stats */}
             <div className="bg-white rounded-2xl shadow-xl p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-4">System Stats</h3>
-              
               <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-3 bg-blue-50 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">{inventoryVehicles.length}</div>
-                  <div className="text-sm text-gray-600">Active Vehicles</div>
-                </div>
-                <div className="text-center p-3 bg-green-50 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">
-                    {/* Pass pricingStrategy to calculateDynamicPrice here */}
-                    {inventoryVehicles.reduce((sum, v) => sum + calculateDynamicPrice(v, pricingStrategy), 0).toLocaleString()}
-                  </div>
-                  <div className="text-sm text-gray-600">Total Value</div>
-                </div>
-                <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                  <div className="text-2xl font-bold text-yellow-600">
-                    {inventoryVehicles.length > 0 ? Math.round(inventoryVehicles.reduce((sum, v) => sum + v.demand, 0) / inventoryVehicles.length) : 0}%
-                  </div>
-                  <div className="text-sm text-gray-600">Avg Demand</div>
-                </div>
-                <div className="text-center p-3 bg-purple-50 rounded-lg">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {inventoryVehicles.reduce((sum, v) => sum + v.inventory, 0)}
-                  </div>
-                  <div className="text-sm text-gray-600">Total Stock</div>
-                </div>
+                <div className="text-center p-3 bg-blue-50 rounded-lg"><div className="text-2xl font-bold text-blue-600">{inventoryVehicles.length}</div><div className="text-sm text-gray-600">Active Vehicles</div></div>
+                <div className="text-center p-3 bg-green-50 rounded-lg"><div className="text-2xl font-bold text-green-600">{inventoryVehicles.reduce((sum, v) => sum + calculateDynamicPrice(v, pricingStrategy), 0).toLocaleString()}</div><div className="text-sm text-gray-600">Total Value</div></div>
+                <div className="text-center p-3 bg-yellow-50 rounded-lg"><div className="text-2xl font-bold text-yellow-600">{inventoryVehicles.length > 0 ? Math.round(inventoryVehicles.reduce((sum, v) => sum + v.demand, 0) / inventoryVehicles.length) : 0}%</div><div className="text-sm text-gray-600">Avg Demand</div></div>
+                <div className="text-center p-3 bg-purple-50 rounded-lg"><div className="text-2xl font-bold text-purple-600">{inventoryVehicles.reduce((sum, v) => sum + v.inventory, 0)}</div><div className="text-sm text-gray-600">Total Stock</div></div>
               </div>
             </div>
           </div>
-          </div>
         </div>
-      </>
-      )}
+      {/* </>) */} {/* Removed incorrect closing tag from original structure if view === 'main' */}
     </div>
   );
 };
