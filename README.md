@@ -29,27 +29,37 @@ This system provides intelligent pricing for vehicle inventory using a multi-fac
 - **Icons**: Lucide React
 - **State Management**: React useState/useEffect
 - **Build Tool**: Modern JavaScript (ES6+)
+- **Backend**: Node.js, Express.js
+- **Database**: MongoDB with Mongoose ODM
+- **Authentication**: JSON Web Tokens (JWT), bcryptjs for password hashing
+
+### Backend System
+
+The application now features a robust backend built with Node.js and Express.js, responsible for several key aspects of the system:
+
+-   **API Provision**: Exposes a RESTful API for managing vehicle inventory and user authentication.
+-   **Data Persistence**: Utilizes MongoDB as its database, with Mongoose as the Object Data Modeling (ODM) library to interact with vehicle and user data.
+-   **Authentication & Authorization**: Manages user registration and login, issuing JWTs to authenticate users and protect sensitive API routes.
+-   **Business Logic**: Contains server-side logic related to data validation and user management.
 
 ### Key Components
-```
-VehiclePricingSystem/
-├── State Management
-│   ├── vehicles (inventory data)
-│   ├── realTimeFactors (market conditions)
-│   ├── selectedVehicle (detailed analysis)
-│   └── pricingStrategy (algorithm selection)
-├── Pricing Algorithm
-│   ├── Base price calculation
-│   ├── Demand-based adjustments
-│   ├── Inventory impact analysis
-│   ├── Real-time market factors
-│   └── Category premiums
-└── UI Components
-    ├── Vehicle inventory cards
-    ├── Market factors dashboard
-    ├── Pricing breakdown panel
-    └── System statistics
-```
+
+The system is now structured as a full-stack application:
+
+**Backend (located in project root with `server.js`, and directories like `/models`, `/routes`, `/controllers`, `/middleware`):**
+-   **Server (`server.js`)**: Main Express.js application setup, middleware configuration, database connection, and server initiation.
+-   **Models (`/models`)**: Mongoose schemas defining the structure for `Vehicle` and `User` data stored in MongoDB.
+-   **Routes (`/routes`)**: API route definitions (e.g., `vehicleRoutes.js`, `authRoutes.js`) that map HTTP requests to controller functions.
+-   **Controllers (`/controllers`)**: Contain the business logic for handling API requests, interacting with models, and preparing responses (e.g., `vehicleController.js`, `authController.js`).
+-   **Middleware (`/middleware`)**: Custom middleware functions, notably `authMiddleware.js` for JWT-based protection of API routes.
+
+**Frontend (`src/` directory, primarily `real-time-vehicle-pricing-system.js` and supporting components):**
+-   **Main Application UI (`real-time-vehicle-pricing-system.js`)**: The core React component orchestrating the user interface, including dynamic pricing display, vehicle listings, and navigation between different views (main, login, register, add/edit vehicle).
+-   **API Communication Service (`apiService.js`)**: A dedicated module for managing all HTTP requests to the backend API, including automatic attachment of JWT for authenticated requests.
+-   **Authentication UI Components (`LoginPage.js`, `RegisterPage.js`)**: React components providing forms and logic for user login and registration, interacting with the backend via `apiService.js`.
+-   **Vehicle Management UI Components (`AddVehiclePage.js`, `EditVehiclePage.js`)**: React components providing forms and logic for creating and updating vehicle listings, also using `apiService.js`.
+-   **Pricing Algorithm Logic**: The client-side JavaScript logic responsible for calculating dynamic vehicle prices based on various real-time and vehicle-specific factors.
+-   **UI Elements**: Includes interactive vehicle cards, market factor displays, pricing breakdown panels, and forms for data input.
 
 ## Pricing Algorithm
 
@@ -89,6 +99,7 @@ inventoryMultiplier = 1.3 - 0.3 * Math.max(0.1, inventory / 50)
 
 ### Prerequisites
 - Node.js 16+ and npm/yarn
+- MongoDB (Atlas, local, or Docker)
 - Modern web browser with ES6+ support
 
 ### Installation
@@ -97,19 +108,43 @@ inventoryMultiplier = 1.3 - 0.3 * Math.max(0.1, inventory / 50)
 git clone https://github.com/your-org/vehicle-pricing-system.git
 cd vehicle-pricing-system
 
-# Install dependencies
+# Install backend dependencies (from the root directory)
 npm install
 
-# Start development server
-npm start
+# Note: The frontend (React app) is within the same project structure
+# and its dependencies are assumed to be part of the main package.json for this project.
+# If it were a separate CRA project in a /client subdir, you would:
+# cd client && npm install && cd ..
+
+# Create a .env file in the root directory from .env.example
+# Populate it with your MONGO_URI, PORT (optional, defaults to 5000), and JWT_SECRET
+cp .env.example .env
+# Then edit .env with your actual values
 ```
 
+### Running the Application
+1.  **Start the Backend Server:**
+    From the project root directory:
+    ```bash
+    npm start
+    # Or for development with auto-restart using nodemon (if configured in package.json scripts):
+    # npm run dev
+    ```
+    The backend will typically run on `http://localhost:5000` (or your specified `PORT`).
+
+2.  **Start the Frontend Development Server:**
+    The React application (`real-time-vehicle-pricing-system.js` and supporting files in `src/`) is served by the same Node.js/Express server for simplicity in this project structure (though often they are separate processes in development).
+    To view the application, open your web browser and navigate to `http://localhost:PORT` (e.g., `http://localhost:5000` if your backend serves the frontend's `index.html`).
+    *If you were using Create React App or a similar setup where the frontend has its own dev server (e.g., in a `/client` subdirectory), you would typically run `npm start` in that subdirectory, and it would open on a different port (like `http://localhost:3000`). For this project, assume the Express server handles serving the frontend static assets.*
+
 ### Usage
-1. **Browse Inventory**: View all vehicles with real-time pricing
-2. **Select Vehicle**: Click any vehicle card for detailed analysis
-3. **Monitor Market**: Watch real-time factor changes in the dashboard
-4. **Adjust Strategy**: Switch between pricing strategies as needed
-5. **Analyze Trends**: Use visual indicators to identify pricing opportunities
+1. **Register and Login**: Use the frontend UI to register a new user and then log in.
+2. **Manage Inventory (Authenticated Users)**: Add, edit, or delete vehicles using the UI.
+3. **Browse Inventory**: View all vehicles with real-time pricing.
+4. **Select Vehicle**: Click any vehicle card for detailed analysis and price history.
+5. **Monitor Market**: Watch real-time factor changes in the dashboard.
+6. **Adjust Strategy**: Switch between pricing strategies as needed.
+7. **Analyze Trends**: Use visual indicators to identify pricing opportunities.
 
 ## Understanding the Interface
 
@@ -118,6 +153,7 @@ npm start
 - **Demand Level**: Color-coded demand percentage (Red: High, Yellow: Medium, Green: Low)
 - **Inventory Status**: Stock levels with urgency indicators
 - **Location**: Geographic market information
+- **Admin Controls**: Edit/Delete buttons (visible if logged in).
 
 ### Market Factors Panel
 - **Real-time Bars**: Visual representation of current market conditions
@@ -130,6 +166,7 @@ npm start
 - **Inventory Impact**: Scarcity-based pricing adjustments
 - **Market Factors**: Combined effect of real-time conditions
 - **Final Price**: Complete calculated pricing
+- **Price History**: List of recent price changes for the selected vehicle.
 
 ## Use Cases
 
@@ -188,49 +225,65 @@ const factorRanges = {
 ## Customization
 
 ### Adding New Vehicle Categories
+The `categoryMultipliers` object (in `real-time-vehicle-pricing-system.js` for frontend calculation, and implicitly in `Vehicle.js` schema for backend storage) can be extended:
 ```javascript
 const categoryMultipliers = {
   'Electric': 1.1,
   'Luxury': 1.2,
   'SUV': 1.05,
   'Truck': 1.08,
-  'Hybrid': 1.06,     // Add new category
-  'Convertible': 1.15  // Add another category
+  'Hybrid': 1.06,
+  'Convertible': 1.15
+  // Add more categories as needed
 };
 ```
 
 ### Extending Market Factors
+New real-time factors can be added to the `realTimeFactors` state in `real-time-vehicle-pricing-system.js` and incorporated into the `calculateDynamicPrice` function. Backend validation or processing might also need updates if these factors are persisted.
 ```javascript
-// Add new real-time factors
+// Example: Add new real-time factors in frontend state
 const extendedFactors = {
-  ...realTimeFactors,
-  fuelPriceImpact: 1.0,
-  weatherConditions: 1.0,
-  economicIndicators: 1.0
+  ...realTimeFactors, // existing factors
+  fuelPriceImpact: 1.0, // Example new factor
+  weatherConditions: 1.0, // Example new factor
 };
 ```
 
 ## Development
 
 ### Project Structure
+The project now has a more defined full-stack structure:
 ```
-src/
-├── components/
-│   └── VehiclePricingSystem.jsx
-├── utils/
-│   ├── pricingAlgorithm.js
-│   └── marketSimulation.js
-├── data/
-│   └── vehicleInventory.js
-└── styles/
-    └── tailwind.config.js
+/
+├── .env.example            # Environment variable template
+├── package.json            # Backend dependencies and scripts
+├── server.js               # Main backend server file
+├── models/                 # Mongoose schemas (Vehicle.js, User.js)
+├── routes/                 # API route definitions (vehicleRoutes.js, authRoutes.js)
+├── controllers/            # API logic (vehicleController.js, authController.js)
+├── middleware/             # Custom middleware (authMiddleware.js)
+├── src/                    # Frontend React application source
+│   ├── real-time-vehicle-pricing-system.js # Main frontend component
+│   ├── LoginPage.js          # Login component
+│   ├── RegisterPage.js       # Registration component
+│   ├── AddVehiclePage.js     # Add vehicle form component
+│   ├── EditVehiclePage.js    # Edit vehicle form component
+│   ├── apiService.js         # Frontend API communication utility
+│   └── ... (other potential frontend files like CSS, index.js)
+├── vehicleInventory.json   # Static vehicle data (now fetched via API from DB) - can be removed or kept for reference
+└── README.md               # This file
 ```
+*Note: The `vehicleInventory.json` is now superseded by database persistence for active data, but might be kept as an initial data seed example or for reference.*
 
-### Key Functions
-- `calculateDynamicPrice()`: Core pricing algorithm
-- `getPriceChange()`: Trend analysis and comparison
-- `getDemandColor()`: Visual indicator logic
-- `useEffect()`: Real-time update management
+### Key Functions (Examples)
+- **Backend**:
+    - `vehicleController.createVehicle()`: Handles new vehicle creation.
+    - `authController.registerUser()`: Manages user registration and JWT issuance.
+    - `authMiddleware.protect`: JWT verification middleware.
+- **Frontend**:
+    - `calculateDynamicPrice()`: Core client-side pricing algorithm.
+    - `apiService.post('/vehicles', data)`: Example of creating a vehicle via API.
+    - `useEffect()` hooks for data fetching and real-time updates.
 
 ## Browser Compatibility
 
@@ -261,9 +314,11 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 ## Support
 
 ### Common Issues
-- **Slow Updates**: Check browser performance and reduce update frequency
-- **Pricing Inconsistencies**: Verify all market factors are within expected ranges
-- **Display Issues**: Ensure Tailwind CSS is properly configured
+- **API Connection Problems**: Ensure backend server is running and accessible. Check CORS configuration on backend if frontend requests fail. Verify `MONGO_URI` is correct.
+- **Authentication Failures**: Double-check `JWT_SECRET` consistency. Ensure tokens are correctly stored and sent in Authorization headers.
+- **Slow Updates**: Check browser performance and reduce update frequency if needed.
+- **Pricing Inconsistencies**: Verify all market factors and pricing logic on both client and potentially server (if server-side pricing were added).
+- **Display Issues**: Ensure Tailwind CSS is properly configured for the frontend.
 
 ### Getting Help
 - Create an issue in the GitHub repository
@@ -273,18 +328,19 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 ## Roadmap
 
 ### Upcoming Features
-- [ ] Historical price tracking and charts
+- [x] Historical price tracking and charts (basic frontend history implemented)
 - [ ] Machine learning price predictions
 - [ ] Multi-location inventory management
-- [ ] Customer-specific pricing tiers
-- [ ] External API integrations
+- [ ] User roles and permissions (Admin role for vehicle management)
+- [ ] External API integrations for market data
 - [ ] Advanced reporting dashboard
 - [ ] Mobile app companion
-- [ ] Webhook notifications
+- [ ] Webhook notifications for price alerts or inventory changes
+- [ ] More sophisticated error handling and user feedback
 
 ### Long-term Vision
-- AI-powered market analysis
-- Predictive inventory management
+- AI-powered market analysis and automated pricing adjustments.
+- Predictive inventory management based on sales and market trends.
 - Multi-platform synchronization
 - Enterprise-grade scalability
 

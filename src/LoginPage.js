@@ -6,26 +6,28 @@ const LoginPage = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+import { apiService } from './apiService'; // Import apiService
+
+const LoginPage = ({ onLoginSuccess }) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // Add isLoading state
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true); // Set loading to true
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.msg || 'Login failed');
-      }
+      const data = await apiService.login({ username, password }); // Use apiService
       localStorage.setItem('vehicleAuthToken', data.token); // Store token
       if(onLoginSuccess) onLoginSuccess(username); // Callback to parent
-      // Redirect or update UI (e.g., using React Router or parent state)
       alert('Login successful! Token stored.'); // Simple feedback
     } catch (err) {
       setError(err.message);
       console.error('Login error:', err);
+    } finally {
+      setIsLoading(false); // Set loading to false
     }
   };
 
@@ -42,7 +44,9 @@ const LoginPage = ({ onLoginSuccess }) => {
           <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
         </div>
         {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
-        <button type="submit" style={{ marginTop: '20px', padding: '10px 15px', width: '100%', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Login</button>
+            <button type="submit" style={{ marginTop: '20px', padding: '10px 15px', width: '100%', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }} disabled={isLoading}>
+              {isLoading ? 'Logging in...' : 'Login'}
+            </button>
       </form>
     </div>
   );
