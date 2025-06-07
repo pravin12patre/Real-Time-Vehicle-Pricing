@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1, "make": "Tesla", "model": "Model 3", "year": 2024, "basePrice": 42000, "category": "Electric", "inventory": 15, "demand": 85, "location": "California"
+  },
+  {
+    "id": 2, "make": "Toyota", "model": "Camry", "year": 2024, "basePrice": 28500, "category": "Sedan", "inventory": 32, "demand": 72, "location": "Texas"
+  },
+  {
+    "id": 3, "make": "Ford", "model": "F-150", "year": 2024, "basePrice": 35000, "category": "Truck", "inventory": 8, "demand": 91, "location": "Michigan"
+  },
+  {
+    "id": 4, "make": "BMW", "model": "X5", "year": 2024, "basePrice": 62000, "category": "SUV", "inventory": 12, "demand": 68, "location": "New York"
+  },
+  {
+    "id": 5, "make": "Toyota", "model": "Prius", "year": 2024, "basePrice": 30000, "category": "Hybrid", "inventory": 22, "demand": 75, "location": "Oregon"
+  },
+  {
+    "id": 6, "make": "Mazda", "model": "MX-5 Miata", "year": 2024, "basePrice": 32000, "category": "Convertible", "inventory": 9, "demand": 82, "location": "Florida"
+  }
+]

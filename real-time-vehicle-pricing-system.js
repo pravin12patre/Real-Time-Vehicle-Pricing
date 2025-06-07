@@ -11,83 +11,82 @@ const VehiclePricingSystem = () => {
     competitorPricing: 1.0,
     inventoryLevel: 1.0
   });
+  const [inventoryVehicles, setInventoryVehicles] = useState([]);
 
-  // Sample vehicle inventory
-  const vehicles = [
-    {
-      id: 1,
-      make: 'Tesla',
-      model: 'Model 3',
-      year: 2024,
-      basePrice: 42000,
-      category: 'Electric',
-      inventory: 15,
-      demand: 85,
-      location: 'California'
-    },
-    {
-      id: 2,
-      make: 'Toyota',
-      model: 'Camry',
-      year: 2024,
-      basePrice: 28500,
-      category: 'Sedan',
-      inventory: 32,
-      demand: 72,
-      location: 'Texas'
-    },
-    {
-      id: 3,
-      make: 'Ford',
-      model: 'F-150',
-      year: 2024,
-      basePrice: 35000,
-      category: 'Truck',
-      inventory: 8,
-      demand: 91,
-      location: 'Michigan'
-    },
-    {
-      id: 4,
-      make: 'BMW',
-      model: 'X5',
-      year: 2024,
-      basePrice: 62000,
-      category: 'SUV',
-      inventory: 12,
-      demand: 68,
-      location: 'New York'
-    }
-  ];
+  // Fetch vehicle data on component mount
+  useEffect(() => {
+    fetch('/vehicleInventory.json') // Assuming vehicleInventory.json is in the public folder or root
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => setInventoryVehicles(data))
+      .catch(error => console.error("Could not fetch vehicle inventory:", error));
+  }, []);
 
   // Pricing algorithm
-  const calculateDynamicPrice = useCallback((vehicle) => {
+  const calculateDynamicPrice = useCallback((vehicle, currentPricingStrategy) => {
     let price = vehicle.basePrice;
     
-    // Demand-based adjustment
-    const demandFactor = vehicle.demand / 100;
-    price *= (0.8 + 0.4 * demandFactor);
-    
-    // Inventory-based adjustment
-    const inventoryFactor = Math.max(0.1, vehicle.inventory / 50);
-    price *= (1.3 - 0.3 * inventoryFactor);
-    
-    // Apply real-time factors
-    price *= realTimeFactors.demandMultiplier;
-    price *= realTimeFactors.seasonalAdjustment;
-    price *= realTimeFactors.competitorPricing;
-    price *= realTimeFactors.inventoryLevel;
-    
-    // Category premium
     const categoryMultipliers = {
       'Electric': 1.1,
       'Luxury': 1.2,
       'SUV': 1.05,
       'Truck': 1.08,
-      'Sedan': 1.0
+      'Sedan': 1.0,
+      'Hybrid': 1.06,
+      'Convertible': 1.15
     };
-    
-    price *= categoryMultipliers[vehicle.category] || 1.0;
+    const categoryMultiplier = categoryMultipliers[vehicle.category] || 1.0;
+
+    switch (currentPricingStrategy) {
+      case 'dynamic':
+        // Demand-based adjustment
+        const demandFactor = vehicle.demand / 100;
+        price *= (0.8 + 0.4 * demandFactor);
+
+        // Inventory-based adjustment
+        const inventoryFactor = Math.max(0.1, vehicle.inventory / 50);
+        price *= (1.3 - 0.3 * inventoryFactor);
+
+        // Apply all real-time factors
+        price *= realTimeFactors.demandMultiplier;
+        price *= realTimeFactors.seasonalAdjustment;
+        price *= realTimeFactors.competitorPricing;
+        price *= realTimeFactors.inventoryLevel;
+
+        price *= categoryMultiplier;
+        break;
+
+      case 'competitive':
+        price *= realTimeFactors.competitorPricing;
+        // Dampened demand multiplier: average with 1.0
+        price *= ((realTimeFactors.demandMultiplier + 1) / 2);
+        // Dampened inventory level: average with 1.0 or use a smaller modifier
+        price *= ((realTimeFactors.inventoryLevel + 1) / 2);
+        price *= categoryMultiplier;
+        break;
+
+      case 'fixed':
+        price *= realTimeFactors.seasonalAdjustment;
+        price *= categoryMultiplier;
+        // Optional: Add a small fixed markup if desired, e.g., price *= 1.05;
+        break;
+
+      default: // Default to dynamic if strategy is unknown
+        const defaultDemandFactor = vehicle.demand / 100;
+        price *= (0.8 + 0.4 * defaultDemandFactor);
+        const defaultInventoryFactor = Math.max(0.1, vehicle.inventory / 50);
+        price *= (1.3 - 0.3 * defaultInventoryFactor);
+        price *= realTimeFactors.demandMultiplier;
+        price *= realTimeFactors.seasonalAdjustment;
+        price *= realTimeFactors.competitorPricing;
+        price *= realTimeFactors.inventoryLevel;
+        price *= categoryMultiplier;
+        break;
+    }
     
     return Math.round(price);
   }, [realTimeFactors]);
@@ -101,13 +100,26 @@ const VehiclePricingSystem = () => {
         competitorPricing: Math.max(0.85, Math.min(1.15, prev.competitorPricing + (Math.random() - 0.5) * 0.03)),
         inventoryLevel: Math.max(0.9, Math.min(1.1, prev.inventoryLevel + (Math.random() - 0.5) * 0.02))
       }));
+
+      // Update price history for selected vehicle
+      if (selectedVehicle) {
+        const newPrice = calculateDynamicPrice(selectedVehicle, pricingStrategy);
+        const newPriceEntry = { price: newPrice, timestamp: new Date().toLocaleTimeString() };
+
+        setMarketData(prevMarketData => {
+          const currentHistory = prevMarketData[selectedVehicle.id] || [];
+          const updatedHistory = [...currentHistory, newPriceEntry].slice(-5); // Keep last 5 entries
+          return { ...prevMarketData, [selectedVehicle.id]: updatedHistory };
+        });
+      }
     }, 3000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedVehicle, pricingStrategy, calculateDynamicPrice]); // Added dependencies
 
-  const getPriceChange = (vehicle) => {
-    const currentPrice = calculateDynamicPrice(vehicle);
+  // Pass pricingStrategy to getPriceChange
+  const getPriceChange = (vehicle, currentPricingStrategy) => {
+    const currentPrice = calculateDynamicPrice(vehicle, currentPricingStrategy);
     const basePrice = vehicle.basePrice;
     const change = ((currentPrice - basePrice) / basePrice) * 100;
     return {
@@ -179,8 +191,9 @@ const VehiclePricingSystem = () => {
               </div>
 
               <div className="grid gap-4">
-                {vehicles.map((vehicle) => {
-                  const priceInfo = getPriceChange(vehicle);
+                {inventoryVehicles.map((vehicle) => {
+                  // Pass pricingStrategy to getPriceChange here
+                  const priceInfo = getPriceChange(vehicle, pricingStrategy);
                   return (
                     <div
                       key={vehicle.id}
@@ -189,7 +202,16 @@ const VehiclePricingSystem = () => {
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
-                      onClick={() => setSelectedVehicle(vehicle)}
+                      onClick={() => {
+                        setSelectedVehicle(vehicle);
+                        // Add initial price to history on selection
+                        const initialPrice = calculateDynamicPrice(vehicle, pricingStrategy);
+                        const initialPriceEntry = { price: initialPrice, timestamp: new Date().toLocaleTimeString() };
+                        setMarketData(prevMarketData => ({
+                          ...prevMarketData,
+                          [vehicle.id]: [initialPriceEntry] // Start new history or overwrite existing
+                        }));
+                      }}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
@@ -350,8 +372,26 @@ const VehiclePricingSystem = () => {
                   <div className="flex justify-between text-lg font-bold">
                     <span>Final Price</span>
                     <span className="text-green-600">
-                      ${calculateDynamicPrice(selectedVehicle).toLocaleString()}
+                      {/* Pass pricingStrategy to calculateDynamicPrice here */}
+                      ${calculateDynamicPrice(selectedVehicle, pricingStrategy).toLocaleString()}
                     </span>
+                  </div>
+
+                  {/* Price History Display */}
+                  <div className="mt-4 pt-4 border-t">
+                    <h4 className="text-md font-semibold text-gray-800 mb-2">Recent Price History:</h4>
+                    {marketData[selectedVehicle.id] && marketData[selectedVehicle.id].length > 0 ? (
+                      <ul className="space-y-1 text-sm text-gray-600">
+                        {marketData[selectedVehicle.id].map((entry, index) => (
+                          <li key={index} className="flex justify-between">
+                            <span>{entry.timestamp}</span>
+                            <span>${entry.price.toLocaleString()}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-gray-500">No price history yet.</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -363,24 +403,25 @@ const VehiclePricingSystem = () => {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-3 bg-blue-50 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">{vehicles.length}</div>
+                  <div className="text-2xl font-bold text-blue-600">{inventoryVehicles.length}</div>
                   <div className="text-sm text-gray-600">Active Vehicles</div>
                 </div>
                 <div className="text-center p-3 bg-green-50 rounded-lg">
                   <div className="text-2xl font-bold text-green-600">
-                    {vehicles.reduce((sum, v) => sum + calculateDynamicPrice(v), 0).toLocaleString()}
+                    {/* Pass pricingStrategy to calculateDynamicPrice here */}
+                    {inventoryVehicles.reduce((sum, v) => sum + calculateDynamicPrice(v, pricingStrategy), 0).toLocaleString()}
                   </div>
                   <div className="text-sm text-gray-600">Total Value</div>
                 </div>
                 <div className="text-center p-3 bg-yellow-50 rounded-lg">
                   <div className="text-2xl font-bold text-yellow-600">
-                    {Math.round(vehicles.reduce((sum, v) => sum + v.demand, 0) / vehicles.length)}%
+                    {inventoryVehicles.length > 0 ? Math.round(inventoryVehicles.reduce((sum, v) => sum + v.demand, 0) / inventoryVehicles.length) : 0}%
                   </div>
                   <div className="text-sm text-gray-600">Avg Demand</div>
                 </div>
                 <div className="text-center p-3 bg-purple-50 rounded-lg">
                   <div className="text-2xl font-bold text-purple-600">
-                    {vehicles.reduce((sum, v) => sum + v.inventory, 0)}
+                    {inventoryVehicles.reduce((sum, v) => sum + v.inventory, 0)}
                   </div>
                   <div className="text-sm text-gray-600">Total Stock</div>
                 </div>
