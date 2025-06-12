@@ -75,7 +75,8 @@ exports.loginUser = async (req, res) => {
     const payload = {
       user: {
         id: user.id,
-      },
+            role: user.role // Add role to JWT payload
+          }
     };
 
     // Sign JWT
@@ -85,7 +86,14 @@ exports.loginUser = async (req, res) => {
       { expiresIn: 3600 }, // Token expires in 1 hour
       (err, token) => {
         if (err) throw err;
-        res.json({ token }); // Send token to client
+            res.json({
+              token,
+              user: { // Send user details for frontend to use immediately
+                id: user.id,
+                username: user.username,
+                role: user.role
+              }
+            });
       }
     );
   } catch (err) {

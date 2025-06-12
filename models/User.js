@@ -4,7 +4,11 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true, trim: true, lowercase: true },
   password: { type: String, required: true }, // Will be stored hashed
-  // role: { type: String, enum: ['user', 'admin'], default: 'user' } // Optional: for role-based access
+  role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user'
+  }
 }, { timestamps: true });
 
 // We'll add password hashing logic in the user registration route, not directly in the model for this plan.

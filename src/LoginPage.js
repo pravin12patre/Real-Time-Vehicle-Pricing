@@ -20,9 +20,10 @@ const LoginPage = ({ onLoginSuccess }) => {
     setIsLoading(true); // Set loading to true
     try {
       const data = await apiService.login({ username, password }); // Use apiService
-      localStorage.setItem('vehicleAuthToken', data.token); // Store token
-      if(onLoginSuccess) onLoginSuccess(username); // Callback to parent
-      alert('Login successful! Token stored.'); // Simple feedback
+      localStorage.setItem('vehicleAuthToken', data.token);
+      localStorage.setItem('vehicleUser', JSON.stringify(data.user)); // Store user object
+      if(onLoginSuccess) onLoginSuccess(data.user); // Pass full user object
+      alert('Login successful! User details stored.');
     } catch (err) {
       setError(err.message);
       console.error('Login error:', err);

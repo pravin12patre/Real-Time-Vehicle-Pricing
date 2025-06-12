@@ -10,7 +10,7 @@ const VehiclePricingSystem = () => {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [pricingStrategy, setPricingStrategy] = useState('dynamic');
   const [marketData, setMarketData] = useState({});
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null); // Will store { id, username, role }
   const [view, setView] = useState('main'); // 'main', 'login', 'register', 'addVehicle', 'editVehicle'
   const [realTimeFactors, setRealTimeFactors] = useState({
     demandMultiplier: 1.0,
@@ -36,6 +36,18 @@ const VehiclePricingSystem = () => {
 
   useEffect(() => {
     fetchInventoryVehicles();
+    // Check for existing token and user info on mount
+    const token = localStorage.getItem('vehicleAuthToken');
+    const storedUser = localStorage.getItem('vehicleUser');
+    if (token && storedUser) {
+      try {
+        setCurrentUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error("Error parsing stored user data:", e);
+        localStorage.removeItem('vehicleUser'); // Clear corrupted data
+        localStorage.removeItem('vehicleAuthToken');
+      }
+    }
   }, [fetchInventoryVehicles]);
 
   // Pricing algorithm
@@ -103,22 +115,23 @@ const VehiclePricingSystem = () => {
     return Math.round(price);
   }, [realTimeFactors]);
 
-  const handleLoginSuccess = (username) => {
-    setCurrentUser(username);
+  const handleLoginSuccess = (userData) => { // Expects { id, username, role }
+    setCurrentUser(userData);
     setView('main');
     fetchInventoryVehicles();
   };
-  const handleRegisterSuccess = (username) => {
+  const handleRegisterSuccess = (username) => { // username is passed but not used to set currentUser
     setView('login');
     alert('Registration successful. Please log in.');
   };
   const handleLogout = () => {
     localStorage.removeItem('vehicleAuthToken');
+    localStorage.removeItem('vehicleUser'); // Clear stored user object
     setCurrentUser(null);
     setView('main');
     setSelectedVehicle(null);
     setMarketData({});
-    setVehicleIdToEdit(null); // Clear vehicleIdToEdit on logout
+    setVehicleIdToEdit(null);
   };
 
   // CRUD view handlers
@@ -196,8 +209,25 @@ const VehiclePricingSystem = () => {
 
   if (view === 'login') return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   if (view === 'register') return <RegisterPage onRegisterSuccess={handleRegisterSuccess} />;
-  if (view === 'addVehicle') return <AddVehiclePage onVehicleAdded={handleVehicleAdded} onCancel={handleCrudCancel} />;
-  if (view === 'editVehicle') return <EditVehiclePage vehicleIdToEdit={vehicleIdToEdit} onVehicleUpdated={handleVehicleUpdated} onCancel={handleCrudCancel} />;
+
+  if (view === 'addVehicle') {
+    if (currentUser && currentUser.role === 'admin') {
+      return <AddVehiclePage onVehicleAdded={handleVehicleAdded} onCancel={handleCrudCancel} />;
+    } else {
+      alert('Not authorized to add vehicles.');
+      setView('main');
+      return null;
+    }
+  }
+  if (view === 'editVehicle') {
+    if (currentUser && currentUser.role === 'admin') {
+      return <EditVehiclePage vehicleIdToEdit={vehicleIdToEdit} onVehicleUpdated={handleVehicleUpdated} onCancel={handleCrudCancel} />;
+    } else {
+      alert('Not authorized to edit vehicles.');
+      setView('main');
+      return null;
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
@@ -205,7 +235,7 @@ const VehiclePricingSystem = () => {
       <div style={{ padding: '10px', textAlign: 'right', maxWidth: 'calc(100% - 2rem)', margin: '0 auto 1rem auto' }} className="max-w-7xl">
         {currentUser ? (
           <>
-            <span style={{ marginRight: '10px' }}>Logged in as: {currentUser} </span>
+            <span style={{ marginRight: '10px' }}>Logged in as: {currentUser.username} (Role: {currentUser.role}) </span>
             <button onClick={handleLogout} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px' }}>Logout</button>
           </>
         ) : (
@@ -252,7 +282,7 @@ const VehiclePricingSystem = () => {
               <div className="flex items-center justify-between mb-6">
                  <h2 className="text-2xl font-bold text-gray-900">Vehicle Inventory</h2>
                  <div className="flex items-center space-x-2">
-                  {currentUser && (
+                  {currentUser && currentUser.role === 'admin' && (
                     <button
                       onClick={openAddVehiclePage}
                       className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md flex items-center transition ease-in-out duration-150"
@@ -336,7 +366,7 @@ const VehiclePricingSystem = () => {
                           <div className="text-sm text-gray-500">
                             Base: ${vehicle.basePrice.toLocaleString()}
                           </div>
-                           {currentUser && (
+                           {currentUser && currentUser.role === 'admin' && (
                             <div className="mt-3 space-x-2">
                               <button onClick={(e) => { e.stopPropagation(); openEditVehiclePage(vehicle._id); }} className="text-xs bg-yellow-400 hover:bg-yellow-500 text-white font-semibold py-1 px-2 rounded flex items-center shadow transition ease-in-out duration-150"><Edit3 size={12} className="mr-1"/> Edit</button>
                               <button onClick={(e) => { e.stopPropagation(); handleDeleteVehicle(vehicle._id); }} className="text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded flex items-center shadow transition ease-in-out duration-150"><Trash2 size={12} className="mr-1"/> Delete</button>
