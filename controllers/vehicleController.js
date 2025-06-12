@@ -37,10 +37,10 @@ exports.getVehicleById = async (req, res) => {
 // @route   POST /api/vehicles
 // @access  Private (to be protected later)
 exports.createVehicle = async (req, res) => {
-  const { make, model, year, basePrice, category, inventory, demand, location } = req.body;
+  const { make, model, year, basePrice, category, inventory, demand, location, imageUrl } = req.body; // Add imageUrl
   try {
     const newVehicle = new Vehicle({
-      make, model, year, basePrice, category, inventory, demand, location
+      make, model, year, basePrice, category, inventory, demand, location, imageUrl // Add imageUrl
     });
     const vehicle = await newVehicle.save();
     res.status(201).json(vehicle);
@@ -54,7 +54,7 @@ exports.createVehicle = async (req, res) => {
 // @route   PUT /api/vehicles/:id
 // @access  Private (to be protected later)
 exports.updateVehicle = async (req, res) => {
-  const { make, model, year, basePrice, category, inventory, demand, location } = req.body;
+  const { make, model, year, basePrice, category, inventory, demand, location, imageUrl } = req.body; // Add imageUrl
   try {
     let vehicle = await Vehicle.findById(req.params.id);
     if (!vehicle) {
@@ -70,6 +70,9 @@ exports.updateVehicle = async (req, res) => {
     vehicle.inventory = inventory === undefined ? vehicle.inventory : inventory;
     vehicle.demand = demand === undefined ? vehicle.demand : demand;
     vehicle.location = location || vehicle.location;
+    if (imageUrl !== undefined) { // Allows clearing imageUrl by sending "" or null, or updating it
+       vehicle.imageUrl = imageUrl;
+    }
 
     vehicle = await vehicle.save();
     res.json(vehicle);

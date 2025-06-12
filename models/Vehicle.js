@@ -10,6 +10,7 @@ const vehicleSchema = new mongoose.Schema({
   inventory: { type: Number, required: true, min: 0 },
   demand: { type: Number, required: true, min: 0, max: 100 }, // Percentage
   location: { type: String },
+  imageUrl: { type: String } // New field for the image URL/path
   // We can add a unique ID if needed, but MongoDB provides _id by default
   // customId: { type: Number, required: true, unique: true } // If we want to maintain existing numeric IDs
 }, { timestamps: true }); // Adds createdAt and updatedAt timestamps

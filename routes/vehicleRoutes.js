@@ -8,18 +8,18 @@ const {
   updateVehicle,
   deleteVehicle
 } = require('../controllers/vehicleController');
-const { protect } = require('../middleware/authMiddleware'); // Import protect middleware
+const { protect, admin } = require('../middleware/authMiddleware'); // Import both
 
 // Import auth middleware (to be created in a later step)
 // const { protect, admin } = require('../middleware/authMiddleware');
 
 router.route('/')
-  .get(getVehicles) // Publicly accessible
-  .post(protect, createVehicle); // Protected: only authenticated users can create
+  .get(getVehicles) // Public
+  .post(protect, admin, createVehicle); // Protected by auth & admin role
 
 router.route('/:id')
-  .get(getVehicleById) // Publicly accessible
-  .put(protect, updateVehicle) // Protected: only authenticated users can update
-  .delete(protect, deleteVehicle); // Protected: only authenticated users can delete
+  .get(getVehicleById) // Public
+  .put(protect, admin, updateVehicle) // Protected by auth & admin role
+  .delete(protect, admin, deleteVehicle); // Protected by auth & admin role
 
 module.exports = router;
