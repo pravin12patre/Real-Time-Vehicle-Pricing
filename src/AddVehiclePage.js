@@ -11,10 +11,15 @@ const AddVehiclePage = ({ onVehicleAdded, onCancel }) => {
     category: 'Sedan', // Default category
     inventory: '',
     demand: '',
-    location: ''
+    location: '',
+    imageUrl: '' // Initialize imageUrl
   });
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(''); // For main form errors
+  const [isLoading, setIsLoading] = useState(false); // For main form submission
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [isUploading, setIsUploading] = useState(false); // For image upload
+  const [imageUploadError, setImageUploadError] = useState('');
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -72,6 +77,43 @@ const AddVehiclePage = ({ onVehicleAdded, onCancel }) => {
     }
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      setImagePreview(URL.createObjectURL(file));
+      setImageUploadError(''); // Clear previous error
+      handleImageUpload(file); // Trigger upload immediately
+    } else {
+      setSelectedFile(null);
+      setImagePreview('');
+      // Optionally clear vehicle.imageUrl if no file is selected,
+      // or if the user explicitly removes a file.
+      // For now, this only handles new file selection.
+    }
+  };
+
+  const handleImageUpload = async (fileToUpload) => {
+    if (!fileToUpload) return;
+    setIsUploading(true);
+    setImageUploadError('');
+    const formData = new FormData();
+    formData.append('vehicleImage', fileToUpload);
+
+    try {
+      const uploadResponse = await apiService.post('/upload/vehicle-image', formData);
+      setVehicle(prev => ({ ...prev, imageUrl: uploadResponse.imageUrl }));
+      // alert('Image uploaded successfully!'); // Consider removing if preview is enough
+    } catch (err) {
+      setImageUploadError(err.message || 'Image upload failed.');
+      setSelectedFile(null);
+      setImagePreview('');
+      setVehicle(prev => ({ ...prev, imageUrl: '' })); // Clear stored URL on new upload error
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   // Categories available in the system (could be fetched or from a config)
   const categories = ['Sedan', 'Electric', 'SUV', 'Truck', 'Hybrid', 'Convertible', 'Luxury'];
 
@@ -81,7 +123,7 @@ const AddVehiclePage = ({ onVehicleAdded, onCancel }) => {
       <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Add New Vehicle</h2>
       <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
 
-        <div style={{ gridColumn: '1 / -1' }}> {/* Spans both columns */}
+        <div style={{ gridColumn: '1 / -1' }}>
           <label htmlFor="make" style={{ display: 'block', marginBottom: '5px' }}>Make:</label>
           <input type="text" id="make" name="make" value={vehicle.make} onChange={handleChange} required style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
         </div>
@@ -123,14 +165,23 @@ const AddVehiclePage = ({ onVehicleAdded, onCancel }) => {
           <input type="text" id="location" name="location" value={vehicle.location} onChange={handleChange} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
         </div>
 
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label htmlFor="vehicleImage" style={{ display: 'block', marginBottom: '5px' }}>Vehicle Image:</label>
+          <input type="file" id="vehicleImage" name="vehicleImage" onChange={handleFileChange} accept="image/*" style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} disabled={isUploading} />
+          {isUploading && <p style={{ margin: '5px 0 0 0', fontStyle: 'italic' }}>Uploading image...</p>}
+          {imageUploadError && <p style={{ color: 'red', margin: '5px 0 0 0' }}>{imageUploadError}</p>}
+          {imagePreview && <img src={imagePreview} alt="Preview" style={{ maxWidth: '200px', height: 'auto', marginTop: '10px', display: 'block' }} />}
+          {!imagePreview && vehicle.imageUrl && <p style={{margin: '5px 0 0 0'}}>Current image: <a href={`http://localhost:5000${vehicle.imageUrl}`} target="_blank" rel="noopener noreferrer">{vehicle.imageUrl}</a></p>}
+        </div>
+
         {error && <p style={{ color: 'red', gridColumn: '1 / -1', textAlign: 'center' }}>{error}</p>}
 
         <div style={{ marginTop: '20px', gridColumn: '1 / -1', textAlign: 'right' }}>
-          <button type="submit" disabled={isLoading} style={{ padding: '10px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+          <button type="submit" disabled={isLoading || isUploading} style={{ padding: '10px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
             {isLoading ? 'Adding...' : 'Add Vehicle'}
           </button>
           {onCancel && (
-            <button type="button" onClick={onCancel} style={{ marginLeft: '10px', padding: '10px 15px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }} disabled={isLoading}>
+            <button type="button" onClick={onCancel} style={{ marginLeft: '10px', padding: '10px 15px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }} disabled={isLoading || isUploading}>
               Cancel
             </button>
           )}

@@ -14,6 +14,7 @@ This system provides intelligent pricing for vehicle inventory using a multi-fac
 - **Interactive Vehicle Inventory**: Browse and analyze vehicle pricing with detailed breakdowns
 - **Multiple Pricing Strategies**: Switch between dynamic, competitive, and fixed pricing models
 - **Smart Visual Indicators**: Color-coded demand levels and inventory status
+- **Vehicle Image Uploads**: Admins can upload and associate images with vehicle listings.
 
 ### Advanced Analytics
 - **Detailed Pricing Breakdown**: See exactly how each factor contributes to final pricing
@@ -29,7 +30,7 @@ This system provides intelligent pricing for vehicle inventory using a multi-fac
 - **Icons**: Lucide React
 - **State Management**: React useState/useEffect
 - **Build Tool**: Modern JavaScript (ES6+)
-- **Backend**: Node.js, Express.js
+- **Backend**: Node.js, Express.js (with `multer` for file uploads)
 - **Database**: MongoDB with Mongoose ODM
 - **Authentication**: JSON Web Tokens (JWT), bcryptjs for password hashing
 
@@ -109,6 +110,7 @@ git clone https://github.com/your-org/vehicle-pricing-system.git
 cd vehicle-pricing-system
 
 # Install all dependencies (backend and frontend) from the root directory
+# This includes Express, Mongoose, React, multer, etc.
 npm install
 
 # Create a .env file in the root directory from .env.example
@@ -116,6 +118,7 @@ npm install
 cp .env.example .env
 # Then edit .env with your actual values for MONGO_URI and JWT_SECRET
 ```
+The `./public/uploads/vehicles/` directory will be used for image uploads. `multer` (as configured in `routes/uploadRoutes.js`) will attempt to create this directory if it doesn't exist, but ensure the application has write permissions to the `public/uploads/` path.
 
 ### Running the Application
 1.  **Start the Backend Server:**
@@ -130,7 +133,7 @@ cp .env.example .env
 
 2.  **Accessing the Frontend Application:**
     With the backend server running (e.g., on `http://localhost:5000`), the frontend React application (from the `src` directory) is intended to be served by this backend. Open your browser and navigate to `http://localhost:PORT` (e.g., `http://localhost:5000`).
-    **Note on Frontend Development**: The current `package.json` script `npm run client` is informational. For a typical React development workflow with features like Hot Module Replacement (HMR), you would typically set up a dedicated React development server (e.g., using Create React App or Vite, often by running `npm start` from a client-specific folder). In this integrated project, for the backend to serve the frontend during development or production, `server.js` would need to be configured with `express.static` to point to the React build output (e.g., a `build` folder) and handle client-side routing. This specific static serving configuration in `server.js` is not yet implemented in detail.
+    **Note on Frontend Development**: The current `package.json` script `npm run client` is informational. For a typical React development workflow with features like Hot Module Replacement (HMR), you would typically set up a dedicated React development server (e.g., using Create React App or Vite, often by running `npm start` from a client-specific folder). In this integrated project, for the backend to serve the frontend during development or production, `server.js` would need to be configured with `express.static` to point to the React build output (e.g., a `build` folder) and handle client-side routing. This specific static serving configuration in `server.js` (beyond serving the `public` folder for uploads) is not yet implemented in detail.
 
 ### Usage
 1. **Register and Login**: Use the frontend UI to register a new user and then log in.
@@ -254,9 +257,12 @@ The project now has a more defined full-stack structure:
 ├── package.json            # Backend dependencies and scripts
 ├── server.js               # Main backend server file
 ├── models/                 # Mongoose schemas (Vehicle.js, User.js)
-├── routes/                 # API route definitions (vehicleRoutes.js, authRoutes.js)
+├── routes/                 # API route definitions (vehicleRoutes.js, authRoutes.js, uploadRoutes.js)
 ├── controllers/            # API logic (vehicleController.js, authController.js)
 ├── middleware/             # Custom middleware (authMiddleware.js)
+├── public/                 # Statically served files (including uploads)
+│   └── uploads/            # Directory for user uploads
+│       └── vehicles/       # Specifically for vehicle images (created by upload route)
 ├── src/                    # Frontend React application source
 │   ├── real-time-vehicle-pricing-system.js # Main frontend component
 │   ├── LoginPage.js          # Login component

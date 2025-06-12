@@ -11,12 +11,17 @@ const EditVehiclePage = ({ vehicleIdToEdit, onVehicleUpdated, onCancel }) => {
     category: 'Sedan',
     inventory: '',
     demand: '',
-    location: ''
+    location: '',
+    imageUrl: '' // Add imageUrl to initial state
   });
   const [originalVehicle, setOriginalVehicle] = useState(null);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // For submission
+  const [error, setError] = useState(''); // For main form errors
+  const [isLoading, setIsLoading] = useState(false); // For main form submission
   const [isFetching, setIsFetching] = useState(false); // For initial data load
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [isUploading, setIsUploading] = useState(false); // For image upload
+  const [imageUploadError, setImageUploadError] = useState('');
 
   const fetchVehicleData = useCallback(async () => {
     if (!vehicleIdToEdit) return;
@@ -32,9 +37,10 @@ const EditVehiclePage = ({ vehicleIdToEdit, onVehicleUpdated, onCancel }) => {
         category: data.category || 'Sedan',
         inventory: data.inventory === undefined ? '' : data.inventory,
         demand: data.demand === undefined ? '' : data.demand,
-        location: data.location || ''
+        location: data.location || '',
+        imageUrl: data.imageUrl || '' // Populate imageUrl
       });
-      setOriginalVehicle(data); // Store original for comparison or reset
+      setOriginalVehicle(data);
     } catch (err) {
       setError(err.message || 'Failed to fetch vehicle data.');
       console.error('Fetch vehicle error:', err);
@@ -99,6 +105,42 @@ const EditVehiclePage = ({ vehicleIdToEdit, onVehicleUpdated, onCancel }) => {
     }
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      setImagePreview(URL.createObjectURL(file));
+      setImageUploadError('');
+      handleImageUpload(file); // Auto-upload on select
+    } else {
+      setSelectedFile(null);
+      // If you want to revert to original image on deselect, you might clear imagePreview
+      // and let the original vehicle.imageUrl take precedence in rendering.
+      // setImagePreview(''); // This would clear preview if user cancels file dialog
+    }
+  };
+
+  const handleImageUpload = async (fileToUpload) => {
+    if (!fileToUpload) return;
+    setIsUploading(true);
+    setImageUploadError('');
+    const formData = new FormData();
+    formData.append('vehicleImage', fileToUpload);
+
+    try {
+      const uploadResponse = await apiService.post('/upload/vehicle-image', formData);
+      setVehicle(prev => ({ ...prev, imageUrl: uploadResponse.imageUrl }));
+      // alert('Image updated successfully!'); // Optional feedback
+    } catch (err) {
+      setImageUploadError(err.message || 'Image upload failed.');
+      // Optionally revert selectedFile and imagePreview if upload fails
+      // setSelectedFile(null);
+      // setImagePreview('');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const categories = ['Sedan', 'Electric', 'SUV', 'Truck', 'Hybrid', 'Convertible', 'Luxury'];
 
   if (isFetching) {
@@ -159,14 +201,33 @@ const EditVehiclePage = ({ vehicleIdToEdit, onVehicleUpdated, onCancel }) => {
           <input type="text" id="edit-location" name="location" value={vehicle.location} onChange={handleChange} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
         </div>
 
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label htmlFor="edit-vehicleImage" style={{ display: 'block', marginBottom: '5px' }}>Vehicle Image:</label>
+          {vehicle.imageUrl && !imagePreview && (
+            <div style={{ marginBottom: '10px' }}>
+              <p style={{ fontSize: '0.9em', fontStyle: 'italic' }}>Current Image:</p>
+              <img src={`http://localhost:5000${vehicle.imageUrl}`} alt="Current Vehicle" style={{ maxWidth: '200px', height: 'auto', display: 'block', marginBottom: '10px', border: '1px solid #ddd' }} />
+            </div>
+          )}
+          {imagePreview && (
+            <div style={{ marginBottom: '10px' }}>
+              <p style={{ fontSize: '0.9em', fontStyle: 'italic' }}>New Image Preview:</p>
+              <img src={imagePreview} alt="New Preview" style={{ maxWidth: '200px', height: 'auto', display: 'block', marginBottom: '10px', border: '1px solid #ddd' }} />
+            </div>
+          )}
+          <input type="file" id="edit-vehicleImage" name="vehicleImage" onChange={handleFileChange} accept="image/*" style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} disabled={isUploading || isFetching} />
+          {isUploading && <p style={{ margin: '5px 0 0 0', fontStyle: 'italic' }}>Uploading image...</p>}
+          {imageUploadError && <p style={{ color: 'red', margin: '5px 0 0 0' }}>{imageUploadError}</p>}
+        </div>
+
         {error && !isFetching && <p style={{ color: 'red', gridColumn: '1 / -1', textAlign: 'center' }}>{error}</p>}
 
         <div style={{ marginTop: '20px', gridColumn: '1 / -1', textAlign: 'right' }}>
-          <button type="submit" disabled={isLoading || isFetching} style={{ padding: '10px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+          <button type="submit" disabled={isLoading || isFetching || isUploading} style={{ padding: '10px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
             {isLoading ? 'Updating...' : 'Update Vehicle'}
           </button>
           {onCancel && (
-            <button type="button" onClick={onCancel} style={{ marginLeft: '10px', padding: '10px 15px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }} disabled={isLoading || isFetching}>
+            <button type="button" onClick={onCancel} style={{ marginLeft: '10px', padding: '10px 15px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }} disabled={isLoading || isFetching || isUploading}>
               Cancel
             </button>
           )}

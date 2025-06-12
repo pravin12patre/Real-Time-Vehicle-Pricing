@@ -328,8 +328,23 @@ const VehiclePricingSystem = () => {
                         }
                       }}
                     >
+                      {vehicle.imageUrl && (
+                        <img
+                          src={`http://localhost:5000${vehicle.imageUrl}`}
+                          alt={`${vehicle.make} ${vehicle.model}`}
+                          style={{
+                            width: '100%',
+                            maxHeight: '200px',
+                            objectFit: 'cover',
+                            borderRadius: '8px 8px 0 0', // Rounded top corners if card has rounded corners
+                            marginBottom: '1rem'
+                          }}
+                          onError={(e) => { e.target.style.display = 'none'; }} // Hide if image fails to load
+                        />
+                      )}
                       <div className="flex items-center justify-between">
-                        <div className="flex-1">
+                        {/* Adjust padding if image is present, or wrap content below image */}
+                        <div className="flex-1 pt-2"> {/* Added padding-top if image is above */}
                           <div className="flex items-center space-x-3 mb-2">
                             <h3 className="text-xl font-bold text-gray-900">
                               {vehicle.year} {vehicle.make} {vehicle.model}

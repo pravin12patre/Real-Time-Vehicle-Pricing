@@ -24,8 +24,12 @@ const handleResponse = async (response) => {
 // Core request function
 const request = async (endpoint, method = 'GET', body = null, isProtected = false) => {
   const headers = {
-    'Content-Type': 'application/json',
+    // 'Content-Type': 'application/json', // Set conditionally
   };
+
+  if (!(body instanceof FormData)) { // Don't set Content-Type for FormData
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (isProtected) {
     const token = getAuthToken();
@@ -47,7 +51,13 @@ const request = async (endpoint, method = 'GET', body = null, isProtected = fals
   };
 
   if (body) {
-    config.body = JSON.stringify(body);
+    if (body instanceof FormData) {
+      // For FormData, browser sets Content-Type to multipart/form-data with boundary
+      // delete headers['Content-Type']; // So remove our default
+      config.body = body;
+    } else {
+      config.body = JSON.stringify(body); // Existing JSON logic
+    }
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, config);

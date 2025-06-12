@@ -3,13 +3,15 @@ require('dotenv').config(); // For loading environment variables from a .env fil
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose'); // Ensure mongoose is required
+const path = require('path'); // Import path module
 
 // Import models (optional here, but good for clarity if routes are also in server.js)
 // const Vehicle = require('./models/Vehicle');
 // const User = require('./models/User');
 
 const vehicleRoutes = require('./routes/vehicleRoutes');
-const authRoutes = require('./routes/authRoutes'); // Add this
+const authRoutes = require('./routes/authRoutes');
+const uploadRoutes = require('./routes/uploadRoutes'); // Add this
 
 const app = express();
 const PORT = process.env.PORT || 5000; // Backend server port
@@ -19,6 +21,11 @@ const PORT = process.env.PORT || 5000; // Backend server port
 app.use(cors());
 // Parse JSON request bodies
 app.use(express.json());
+
+// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
+// Now, files in ./public/ can be accessed directly.
+// e.g., ./public/uploads/vehicles/image.jpg -> http://localhost:PORT/uploads/vehicles/image.jpg
 
 // --- Database Connection ---
 mongoose.connect(process.env.MONGO_URI)
@@ -32,7 +39,8 @@ app.get('/', (req, res) => {
 
 // --- API Routes ---
 app.use('/api/vehicles', vehicleRoutes);
-app.use('/api/auth', authRoutes); // Add this
+app.use('/api/auth', authRoutes);
+app.use('/api/upload', uploadRoutes);     // Add this
 
 // --- Global Error Handler (Basic Example) ---
 app.use((err, req, res, next) => {
