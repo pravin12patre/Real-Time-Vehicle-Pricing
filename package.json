@@ -26,5 +26,37 @@
   },
   "engines": {
     "node": ">=16.0.0"
+  "name": "real-time-vehicle-pricing",
+  "version": "1.0.0",
+  "description": "A comprehensive React-based application for dynamic vehicle pricing that adapts to market conditions, inventory levels, and demand patterns in real-time.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pravin12patre/Real-Time-Vehicle-Pricing.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pravin12patre/Real-Time-Vehicle-Pricing/issues"
+  },
+  "homepage": "https://github.com/pravin12patre/Real-Time-Vehicle-Pricing#readme",
+  "dependencies": {
+    "@types/node": "^22.15.30",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.6",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^4.5.2"
   }
 }
