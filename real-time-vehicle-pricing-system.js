@@ -188,7 +188,7 @@ const VehiclePricingSystem = () => {
   // Simulate real-time market changes
   useEffect(() => {
     const interval = setInterval(() => {
-      setRealTimeFactors(prev => ({
+      setRealTimeFactors(prev => ({ // This object structure is important for the snapshot
         demandMultiplier: Math.max(0.8, Math.min(1.3, prev.demandMultiplier + (Math.random() - 0.5) * 0.05)),
         seasonalAdjustment: Math.max(0.9, Math.min(1.2, prev.seasonalAdjustment + (Math.random() - 0.5) * 0.02)),
         competitorPricing: Math.max(0.85, Math.min(1.15, prev.competitorPricing + (Math.random() - 0.5) * 0.03)),
@@ -209,7 +209,46 @@ const VehiclePricingSystem = () => {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [selectedVehicle, pricingStrategy, calculateDynamicPrice]); // Added dependencies
+  }, [selectedVehicle, pricingStrategy, calculateDynamicPrice]);
+
+  // Function to log pricing event
+  const logPriceData = async (vehicle, calculatedPrice, currentFactors, strategy) => {
+    if (!vehicle || !currentUser || !vehicle._id) return;
+
+    const payload = {
+      vehicleId: vehicle._id,
+      calculatedPrice: calculatedPrice,
+      basePriceSnapshot: vehicle.basePrice,
+      categorySnapshot: vehicle.category,
+      yearSnapshot: vehicle.year,
+      vehicleDemandSnapshot: vehicle.demand,
+      vehicleInventorySnapshot: vehicle.inventory,
+      realTimeFactorsSnapshot: {
+        demandMultiplier: currentFactors.demandMultiplier,
+        seasonalAdjustment: currentFactors.seasonalAdjustment,
+        competitorPricing: currentFactors.competitorPricing,
+        inventoryLevel: currentFactors.inventoryLevel
+      },
+      pricingStrategyUsed: strategy
+    };
+
+    try {
+      await apiService.post('/pricing-events/log', payload);
+      // console.log('Pricing event logged for vehicle:', vehicle._id);
+    } catch (error) {
+      console.error('Failed to log pricing event for vehicle:', vehicle._id, error.message);
+    }
+  };
+
+  // useEffect for logging price data when relevant states change
+  useEffect(() => {
+    if (selectedVehicle && selectedVehicle._id && currentUser && Object.keys(realTimeFactors).length > 0) {
+      const currentPrice = calculateDynamicPrice(selectedVehicle, pricingStrategy);
+      logPriceData(selectedVehicle, currentPrice, realTimeFactors, pricingStrategy);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVehicle, realTimeFactors, pricingStrategy, currentUser]); // calculateDynamicPrice removed as it's covered by realTimeFactors & pricingStrategy for this effect's purpose
+
 
   // Pass pricingStrategy to getPriceChange
   const getPriceChange = (vehicle, currentPricingStrategy) => {
