@@ -6,7 +6,75 @@ const Vehicle = require('../models/Vehicle');
 // @access  Public
 exports.getVehicles = async (req, res) => {
   try {
-    const vehicles = await Vehicle.find();
+    const {
+      keyword,
+      category,
+      minPrice, maxPrice,
+      minYear, maxYear,
+      sortBy, sortOrder // 'asc' or 'desc'
+    } = req.query;
+
+    let filter = {};
+    let priceFilter = {};
+    let yearFilter = {};
+
+    if (keyword) {
+      const regex = new RegExp(keyword, 'i'); // 'i' for case-insensitive
+      filter.$or = [
+        { make: regex },
+        { model: regex }
+      ];
+    }
+
+    if (category) {
+      filter.category = category;
+    }
+
+    // Price filtering
+    if (minPrice) {
+      const parsedMinPrice = parseFloat(minPrice);
+      if (!isNaN(parsedMinPrice)) {
+        priceFilter.$gte = parsedMinPrice;
+      }
+    }
+    if (maxPrice) {
+      const parsedMaxPrice = parseFloat(maxPrice);
+      if (!isNaN(parsedMaxPrice)) {
+        priceFilter.$lte = parsedMaxPrice;
+      }
+    }
+    if (Object.keys(priceFilter).length > 0) {
+      filter.basePrice = priceFilter;
+    }
+
+    // Year filtering
+    if (minYear) {
+      const parsedMinYear = parseInt(minYear, 10);
+      if (!isNaN(parsedMinYear)) {
+        yearFilter.$gte = parsedMinYear;
+      }
+    }
+    if (maxYear) {
+      const parsedMaxYear = parseInt(maxYear, 10);
+      if (!isNaN(parsedMaxYear)) {
+        yearFilter.$lte = parsedMaxYear;
+      }
+    }
+    if (Object.keys(yearFilter).length > 0) {
+      filter.year = yearFilter;
+    }
+
+    let sort = {};
+    if (sortBy) {
+      // Ensure sortBy is a valid field to prevent injection, though Mongoose typically handles this.
+      // For enhanced security, one might validate sortBy against a list of allowed fields.
+      sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    } else {
+      sort.createdAt = -1; // Default sort by newest
+    }
+
+    const vehicles = await Vehicle.find(filter).sort(sort);
+
     res.json(vehicles);
   } catch (err) {
     console.error(err.message);

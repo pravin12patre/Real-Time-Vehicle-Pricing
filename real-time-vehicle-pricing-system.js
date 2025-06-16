@@ -4,8 +4,14 @@ import LoginPage from './LoginPage';
 import RegisterPage from './RegisterPage';
 import AddVehiclePage from './AddVehiclePage';
 import EditVehiclePage from './EditVehiclePage';
-import AdminDashboardPage from './AdminDashboardPage'; // Import AdminDashboardPage
+import AdminDashboardPage from './AdminDashboardPage';
+import VehicleFilter from './VehicleFilter'; // Import VehicleFilter
 import { apiService } from './apiService';
+
+const defaultFilters = {
+  keyword: '', category: '', minPrice: '', maxPrice: '',
+  minYear: '', maxYear: '', sortBy: 'createdAt', sortOrder: 'desc'
+};
 
 const VehiclePricingSystem = () => {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -22,21 +28,23 @@ const VehiclePricingSystem = () => {
   const [inventoryVehicles, setInventoryVehicles] = useState([]);
   const [vehicleIdToEdit, setVehicleIdToEdit] = useState(null);
   const [fetchError, setFetchError] = useState(null);
+  const [filterParams, setFilterParams] = useState(defaultFilters);
 
 
-  const fetchInventoryVehicles = useCallback(async () => {
+  const fetchInventoryVehicles = useCallback(async (filtersToApply) => {
     setFetchError(null);
     try {
-      const data = await apiService.get('/vehicles');
+      const data = await apiService.get('/vehicles', filtersToApply);
       setInventoryVehicles(data);
     } catch (error) {
-      console.error("Could not fetch vehicles from API:", error);
-      setFetchError(error.message || "Failed to load vehicles.");
+      console.error("Could not fetch vehicles from API with filters:", error);
+      setFetchError(error.message || "Failed to load filtered vehicles.");
+      setInventoryVehicles([]); // Clear vehicles on error
     }
   }, []);
 
   useEffect(() => {
-    fetchInventoryVehicles();
+    fetchInventoryVehicles(filterParams); // Use filterParams state for initial fetch
     // Check for existing token and user info on mount
     const token = localStorage.getItem('vehicleAuthToken');
     const storedUser = localStorage.getItem('vehicleUser');
@@ -49,7 +57,12 @@ const VehiclePricingSystem = () => {
         localStorage.removeItem('vehicleAuthToken');
       }
     }
-  }, [fetchInventoryVehicles]);
+  }, [fetchInventoryVehicles, filterParams]); // Add filterParams to re-fetch if they were to change from other sources
+
+  const handleFilterChange = (newFilters) => {
+    setFilterParams(newFilters);
+    fetchInventoryVehicles(newFilters);
+  };
 
   // Pricing algorithm
   const calculateDynamicPrice = useCallback((vehicle, currentPricingStrategy) => {
@@ -305,6 +318,7 @@ const VehiclePricingSystem = () => {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-xl p-6">
               {/* Moved Add Vehicle Button and Pricing Strategy Dropdown into this div */}
+              {/* Moved Add Vehicle Button and Pricing Strategy Dropdown into this div */}
               <div className="flex items-center justify-between mb-6">
                  <h2 className="text-2xl font-bold text-gray-900">Vehicle Inventory</h2>
                  <div className="flex items-center space-x-2">
@@ -320,7 +334,7 @@ const VehiclePricingSystem = () => {
                   <select 
                     value={pricingStrategy} 
                     onChange={(e) => setPricingStrategy(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" // Adjusted padding
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="dynamic">Dynamic Pricing</option>
                     <option value="competitive">Competitive Pricing</option>
@@ -328,6 +342,8 @@ const VehiclePricingSystem = () => {
                   </select>
                 </div>
               </div>
+
+              <VehicleFilter onFilterChange={handleFilterChange} initialFilters={filterParams} />
 
               {fetchError && <div className="text-red-500 bg-red-100 p-3 rounded-lg mb-4">{fetchError}</div>}
 
