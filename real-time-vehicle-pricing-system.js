@@ -2,16 +2,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Car, TrendingUp, TrendingDown, DollarSign, Calendar, MapPin, Users, Settings, BarChart3, Activity, PlusCircle, Edit3, Trash2 } from 'lucide-react'; // Added icons
 import LoginPage from './LoginPage';
 import RegisterPage from './RegisterPage';
-import AddVehiclePage from './AddVehiclePage'; // Import AddVehiclePage
-import EditVehiclePage from './EditVehiclePage'; // Import EditVehiclePage
-import { apiService } from './apiService'; // Import apiService
+import AddVehiclePage from './AddVehiclePage';
+import EditVehiclePage from './EditVehiclePage';
+import AdminDashboardPage from './AdminDashboardPage'; // Import AdminDashboardPage
+import { apiService } from './apiService';
 
 const VehiclePricingSystem = () => {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [pricingStrategy, setPricingStrategy] = useState('dynamic');
   const [marketData, setMarketData] = useState({});
-  const [currentUser, setCurrentUser] = useState(null); // Will store { id, username, role }
-  const [view, setView] = useState('main'); // 'main', 'login', 'register', 'addVehicle', 'editVehicle'
+  const [currentUser, setCurrentUser] = useState(null);
+  const [view, setView] = useState('main'); // 'main', 'login', 'register', 'addVehicle', 'editVehicle', 'adminDashboard'
   const [realTimeFactors, setRealTimeFactors] = useState({
     demandMultiplier: 1.0,
     seasonalAdjustment: 1.0,
@@ -126,7 +127,7 @@ const VehiclePricingSystem = () => {
   };
   const handleLogout = () => {
     localStorage.removeItem('vehicleAuthToken');
-    localStorage.removeItem('vehicleUser'); // Clear stored user object
+    localStorage.removeItem('vehicleUser');
     setCurrentUser(null);
     setView('main');
     setSelectedVehicle(null);
@@ -134,9 +135,23 @@ const VehiclePricingSystem = () => {
     setVehicleIdToEdit(null);
   };
 
+  const navigateToAdminDashboard = () => {
+    setSelectedVehicle(null); // Clear any selected vehicle
+    setVehicleIdToEdit(null); // Clear any vehicle ID being edited
+    setView('adminDashboard');
+  };
+
   // CRUD view handlers
-  const openAddVehiclePage = () => setView('addVehicle');
-  const openEditVehiclePage = (id) => { setVehicleIdToEdit(id); setView('editVehicle'); };
+  const openAddVehiclePage = () => {
+    setSelectedVehicle(null); // Clear selection when opening add page
+    setVehicleIdToEdit(null);
+    setView('addVehicle');
+  };
+  const openEditVehiclePage = (id) => {
+    setSelectedVehicle(null); // Clear selection when opening edit page
+    setVehicleIdToEdit(id);
+    setView('editVehicle');
+  };
   const handleVehicleAdded = () => { fetchInventoryVehicles(); setView('main'); };
   const handleVehicleUpdated = () => { fetchInventoryVehicles(); setVehicleIdToEdit(null); setView('main'); };
   const handleCrudCancel = () => { setVehicleIdToEdit(null); setView('main'); };
@@ -214,18 +229,21 @@ const VehiclePricingSystem = () => {
     if (currentUser && currentUser.role === 'admin') {
       return <AddVehiclePage onVehicleAdded={handleVehicleAdded} onCancel={handleCrudCancel} />;
     } else {
-      alert('Not authorized to add vehicles.');
-      setView('main');
-      return null;
+      alert('Access Denied: Admins only.'); setView('main'); return null;
     }
   }
   if (view === 'editVehicle') {
     if (currentUser && currentUser.role === 'admin') {
       return <EditVehiclePage vehicleIdToEdit={vehicleIdToEdit} onVehicleUpdated={handleVehicleUpdated} onCancel={handleCrudCancel} />;
     } else {
-      alert('Not authorized to edit vehicles.');
-      setView('main');
-      return null;
+      alert('Access Denied: Admins only.'); setView('main'); return null;
+    }
+  }
+  if (view === 'adminDashboard') {
+    if (currentUser && currentUser.role === 'admin') {
+      return <AdminDashboardPage />;
+    } else {
+      alert('Access Denied: Admins only.'); setView('main'); return null;
     }
   }
 
@@ -236,7 +254,15 @@ const VehiclePricingSystem = () => {
         {currentUser ? (
           <>
             <span style={{ marginRight: '10px' }}>Logged in as: {currentUser.username} (Role: {currentUser.role}) </span>
-            <button onClick={handleLogout} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px' }}>Logout</button>
+            {currentUser.role === 'admin' && (
+              <button
+                onClick={navigateToAdminDashboard}
+                style={{ marginLeft: '10px', padding: '8px 12px', cursor: 'pointer', backgroundColor: '#6f42c1', color: 'white', border: 'none', borderRadius: '4px' }}
+              >
+                Admin Dashboard
+              </button>
+            )}
+            <button onClick={handleLogout} style={{ marginLeft: '10px', padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px' }}>Logout</button>
           </>
         ) : (
           <>

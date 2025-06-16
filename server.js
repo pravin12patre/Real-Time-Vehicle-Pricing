@@ -11,7 +11,8 @@ const path = require('path'); // Import path module
 
 const vehicleRoutes = require('./routes/vehicleRoutes');
 const authRoutes = require('./routes/authRoutes');
-const uploadRoutes = require('./routes/uploadRoutes'); // Add this
+const uploadRoutes = require('./routes/uploadRoutes');
+const adminRoutes = require('./routes/adminRoutes'); // Add this line
 
 const app = express();
 const PORT = process.env.PORT || 5000; // Backend server port
@@ -40,7 +41,8 @@ app.get('/', (req, res) => {
 // --- API Routes ---
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/upload', uploadRoutes);     // Add this
+app.use('/api/upload', uploadRoutes);
+app.use('/api/admin', adminRoutes); // Add this line for admin routes
 
 // --- Global Error Handler (Basic Example) ---
 app.use((err, req, res, next) => {

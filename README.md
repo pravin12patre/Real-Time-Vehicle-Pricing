@@ -15,6 +15,7 @@ This system provides intelligent pricing for vehicle inventory using a multi-fac
 - **Multiple Pricing Strategies**: Switch between dynamic, competitive, and fixed pricing models
 - **Smart Visual Indicators**: Color-coded demand levels and inventory status
 - **Vehicle Image Uploads**: Admins can upload and associate images with vehicle listings.
+- **Basic Admin Dashboard**: Provides administrators with an overview of key application statistics, such as total users, total vehicles, and vehicle counts by category.
 
 ### Advanced Analytics
 - **Detailed Pricing Breakdown**: See exactly how each factor contributes to final pricing
@@ -38,7 +39,7 @@ This system provides intelligent pricing for vehicle inventory using a multi-fac
 
 The application now features a robust backend built with Node.js and Express.js, responsible for several key aspects of the system:
 
--   **API Provision**: Exposes a RESTful API for managing vehicle inventory and user authentication.
+-   **API Provision**: Exposes a RESTful API for managing vehicle inventory, user authentication, and administrative tasks (e.g., fetching application statistics via `GET /api/admin/stats`).
 -   **Data Persistence**: Utilizes MongoDB as its database, with Mongoose as the Object Data Modeling (ODM) library to interact with vehicle and user data.
 -   **Authentication & Authorization**: Manages user registration and login, issuing JWTs to authenticate users and protect sensitive API routes.
 -   **Business Logic**: Contains server-side logic related to data validation and user management.
@@ -50,15 +51,16 @@ The system is now structured as a full-stack application:
 **Backend (located in project root with `server.js`, and directories like `/models`, `/routes`, `/controllers`, `/middleware`):**
 -   **Server (`server.js`)**: Main Express.js application setup, middleware configuration, database connection, and server initiation.
 -   **Models (`/models`)**: Mongoose schemas defining the structure for `Vehicle` and `User` data stored in MongoDB.
--   **Routes (`/routes`)**: API route definitions (e.g., `vehicleRoutes.js`, `authRoutes.js`) that map HTTP requests to controller functions.
--   **Controllers (`/controllers`)**: Contain the business logic for handling API requests, interacting with models, and preparing responses (e.g., `vehicleController.js`, `authController.js`).
+-   **Routes (`/routes`)**: API route definitions (e.g., `vehicleRoutes.js`, `authRoutes.js`, `uploadRoutes.js`, `adminRoutes.js`) that map HTTP requests to controller functions.
+-   **Controllers (`/controllers`)**: Contain the business logic for handling API requests, interacting with models, and preparing responses (e.g., `vehicleController.js`, `authController.js`, `adminController.js`).
 -   **Middleware (`/middleware`)**: Custom middleware functions, notably `authMiddleware.js` for JWT-based protection of API routes.
 
 **Frontend (`src/` directory, primarily `real-time-vehicle-pricing-system.js` and supporting components):**
--   **Main Application UI (`real-time-vehicle-pricing-system.js`)**: The core React component orchestrating the user interface, including dynamic pricing display, vehicle listings, and navigation between different views (main, login, register, add/edit vehicle).
+-   **Main Application UI (`real-time-vehicle-pricing-system.js`)**: The core React component orchestrating the user interface, including dynamic pricing display, vehicle listings, and navigation between different views (main, login, register, add/edit vehicle, admin dashboard).
 -   **API Communication Service (`apiService.js`)**: A dedicated module for managing all HTTP requests to the backend API, including automatic attachment of JWT for authenticated requests.
 -   **Authentication UI Components (`LoginPage.js`, `RegisterPage.js`)**: React components providing forms and logic for user login and registration, interacting with the backend via `apiService.js`.
 -   **Vehicle Management UI Components (`AddVehiclePage.js`, `EditVehiclePage.js`)**: React components providing forms and logic for creating and updating vehicle listings, also using `apiService.js`.
+-   **Admin Dashboard Page (`AdminDashboardPage.js`)**: A dedicated page for admin users to view application statistics.
 -   **Pricing Algorithm Logic**: The client-side JavaScript logic responsible for calculating dynamic vehicle prices based on various real-time and vehicle-specific factors.
 -   **UI Elements**: Includes interactive vehicle cards, market factor displays, pricing breakdown panels, and forms for data input.
 
@@ -137,12 +139,13 @@ The `./public/uploads/vehicles/` directory will be used for image uploads. `mult
 
 ### Usage
 1. **Register and Login**: Use the frontend UI to register a new user and then log in.
-2. **Manage Inventory (Authenticated Users)**: Add, edit, or delete vehicles using the UI.
-3. **Browse Inventory**: View all vehicles with real-time pricing.
-4. **Select Vehicle**: Click any vehicle card for detailed analysis and price history.
-5. **Monitor Market**: Watch real-time factor changes in the dashboard.
-6. **Adjust Strategy**: Switch between pricing strategies as needed.
-7. **Analyze Trends**: Use visual indicators to identify pricing opportunities.
+2. **Access Admin Dashboard (Admin Users)**: If logged in as an admin, navigate to the Admin Dashboard to view application statistics.
+3. **Manage Inventory (Admin Users)**: Add, edit, or delete vehicles using the UI.
+4. **Browse Inventory**: View all vehicles with real-time pricing (publicly accessible).
+5. **Select Vehicle**: Click any vehicle card for detailed analysis and price history.
+6. **Monitor Market**: Watch real-time factor changes in the dashboard.
+7. **Adjust Strategy**: Switch between pricing strategies as needed.
+8. **Analyze Trends**: Use visual indicators to identify pricing opportunities.
 
 ## Understanding the Interface
 
@@ -257,8 +260,8 @@ The project now has a more defined full-stack structure:
 ├── package.json            # Backend dependencies and scripts
 ├── server.js               # Main backend server file
 ├── models/                 # Mongoose schemas (Vehicle.js, User.js)
-├── routes/                 # API route definitions (vehicleRoutes.js, authRoutes.js, uploadRoutes.js)
-├── controllers/            # API logic (vehicleController.js, authController.js)
+├── routes/                 # API route definitions (vehicleRoutes.js, authRoutes.js, uploadRoutes.js, adminRoutes.js)
+├── controllers/            # API logic (vehicleController.js, authController.js, adminController.js)
 ├── middleware/             # Custom middleware (authMiddleware.js)
 ├── public/                 # Statically served files (including uploads)
 │   └── uploads/            # Directory for user uploads
@@ -269,6 +272,7 @@ The project now has a more defined full-stack structure:
 │   ├── RegisterPage.js       # Registration component
 │   ├── AddVehiclePage.js     # Add vehicle form component
 │   ├── EditVehiclePage.js    # Edit vehicle form component
+│   ├── AdminDashboardPage.js # Admin statistics dashboard component
 │   ├── apiService.js         # Frontend API communication utility
 │   └── ... (other potential frontend files like CSS, index.js)
 ├── vehicleInventory.json   # Static vehicle data (now fetched via API from DB) - can be removed or kept for reference
