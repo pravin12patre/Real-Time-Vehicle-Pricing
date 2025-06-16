@@ -22,26 +22,30 @@ const handleResponse = async (response) => {
 };
 
 // Core request function
-const request = async (endpoint, method = 'GET', body = null, isProtected = false) => {
-  const headers = {
-    // 'Content-Type': 'application/json', // Set conditionally
-  };
-
-  if (!(body instanceof FormData)) { // Don't set Content-Type for FormData
-    headers['Content-Type'] = 'application/json';
-  }
+const request = async (endpoint, method = 'GET', body = null, isProtected = false, params = null) => {
+  const headers = {}; // Initialize headers
+  let url = `${API_BASE_URL}${endpoint}`;
 
   if (isProtected) {
     const token = getAuthToken();
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     } else {
-      // Handle cases where a protected route is called without a token
-      // This could be throwing an error, or redirecting to login,
-      // but for a service, throwing an error is often best.
-      console.warn('Attempted to make a protected API call without a token.');
-      // Depending on strictness, you might throw an error here:
-      // throw new Error('Not authorized: No token found for protected route.');
+      console.warn('Protected route called without a token.');
+      // Consider throwing an error or specific handling if a protected route absolutely needs a token
+      // For now, let the backend handle the 401 if token is missing but was expected.
+    }
+  }
+
+  if (method === 'GET' && params) {
+    const queryParams = new URLSearchParams();
+    for (const key in params) {
+      if (params[key] !== undefined && params[key] !== null && String(params[key]).length > 0) {
+        queryParams.append(key, params[key]);
+      }
+    }
+    if (queryParams.toString()) {
+      url += `?${queryParams.toString()}`;
     }
   }
 
@@ -52,29 +56,27 @@ const request = async (endpoint, method = 'GET', body = null, isProtected = fals
 
   if (body) {
     if (body instanceof FormData) {
-      // For FormData, browser sets Content-Type to multipart/form-data with boundary
-      // delete headers['Content-Type']; // So remove our default
+      // For FormData, browser sets Content-Type automatically with boundary
+      // So, no 'Content-Type' header is set from our side.
       config.body = body;
     } else {
-      config.body = JSON.stringify(body); // Existing JSON logic
+      headers['Content-Type'] = 'application/json'; // Set for JSON body
+      config.body = JSON.stringify(body);
     }
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  const response = await fetch(url, config);
   return handleResponse(response);
 };
 
 // Exported API methods
 export const apiService = {
-  get: (endpoint) => request(endpoint, 'GET'),
-  post: (endpoint, data) => request(endpoint, 'POST', data, true), // Protected by default
-  put: (endpoint, data) => request(endpoint, 'PUT', data, true),   // Protected by default
-  delete: (endpoint) => request(endpoint, 'DELETE', null, true), // Protected by default
+  get: (endpoint, params) => request(endpoint, 'GET', null, false, params),
+  getProtected: (endpoint, params) => request(endpoint, 'GET', null, true, params),
+  post: (endpoint, data) => request(endpoint, 'POST', data, true),
+  put: (endpoint, data) => request(endpoint, 'PUT', data, true),
+  delete: (endpoint) => request(endpoint, 'DELETE', null, true),
 
-  // Example of a public POST, if ever needed (though not common for POST)
-  // publicPost: (endpoint, data) => request(endpoint, 'POST', data, false),
-
-  // Also provide specific login/register methods that are not protected by default
   login: (credentials) => request('/auth/login', 'POST', credentials, false),
   register: (userData) => request('/auth/register', 'POST', userData, false),
 };
