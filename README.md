@@ -24,6 +24,9 @@ This system provides intelligent pricing for vehicle inventory using a multi-fac
 - **Trend Indicators**: Visual arrows showing price direction and percentage changes
 - **System Statistics**: Overview of total inventory value and market metrics
 
+### Data Capabilities
+- **Pricing Event Logging for ML**: The system now logs detailed pricing events (vehicle details, market factors, calculated price, strategy used) to the database. This data is intended for future use in training machine learning models for price prediction.
+
 ## Architecture
 
 ### Technology Stack
@@ -40,7 +43,7 @@ This system provides intelligent pricing for vehicle inventory using a multi-fac
 
 The application now features a robust backend built with Node.js and Express.js, responsible for several key aspects of the system:
 
--   **API Provision**: Exposes a RESTful API for managing vehicle inventory, user authentication, and administrative tasks (e.g., fetching application statistics via `GET /api/admin/stats`).
+-   **API Provision**: Exposes a RESTful API for managing vehicle inventory, user authentication, administrative tasks (e.g., fetching application statistics via `GET /api/admin/stats`), and logging pricing events (e.g., `POST /api/pricing-events/log` for capturing data for future ML model training).
     -   The `GET /api/vehicles` endpoint now supports advanced querying with parameters such as: `keyword` (for text search in make/model), `category`, `minPrice`, `maxPrice`, `minYear`, `maxYear`, `sortBy` (e.g., `basePrice`, `year`, `createdAt`), and `sortOrder` (`asc`, `desc`).
 -   **Data Persistence**: Utilizes MongoDB as its database, with Mongoose as the Object Data Modeling (ODM) library to interact with vehicle and user data.
 -   **Authentication & Authorization**: Manages user registration and login, issuing JWTs to authenticate users and protect sensitive API routes.
@@ -52,9 +55,9 @@ The system is now structured as a full-stack application:
 
 **Backend (located in project root with `server.js`, and directories like `/models`, `/routes`, `/controllers`, `/middleware`):**
 -   **Server (`server.js`)**: Main Express.js application setup, middleware configuration, database connection, and server initiation.
--   **Models (`/models`)**: Mongoose schemas defining the structure for `Vehicle` and `User` data stored in MongoDB.
--   **Routes (`/routes`)**: API route definitions (e.g., `vehicleRoutes.js`, `authRoutes.js`, `uploadRoutes.js`, `adminRoutes.js`) that map HTTP requests to controller functions.
--   **Controllers (`/controllers`)**: Contain the business logic for handling API requests, interacting with models, and preparing responses (e.g., `vehicleController.js`, `authController.js`, `adminController.js`).
+-   **Models (`/models`)**: Mongoose schemas defining the structure for `Vehicle`, `User`, and `PriceLog` data stored in MongoDB.
+-   **Routes (`/routes`)**: API route definitions (e.g., `vehicleRoutes.js`, `authRoutes.js`, `uploadRoutes.js`, `adminRoutes.js`, `pricingEventRoutes.js`) that map HTTP requests to controller functions.
+-   **Controllers (`/controllers`)**: Contain the business logic for handling API requests, interacting with models, and preparing responses (e.g., `vehicleController.js`, `authController.js`, `adminController.js`, `pricingEventController.js`).
 -   **Middleware (`/middleware`)**: Custom middleware functions, notably `authMiddleware.js` for JWT-based protection of API routes.
 
 **Frontend (`src/` directory, primarily `real-time-vehicle-pricing-system.js` and supporting components):**
@@ -263,9 +266,9 @@ The project now has a more defined full-stack structure:
 ├── .env.example            # Environment variable template
 ├── package.json            # Backend dependencies and scripts
 ├── server.js               # Main backend server file
-├── models/                 # Mongoose schemas (Vehicle.js, User.js)
-├── routes/                 # API route definitions (vehicleRoutes.js, authRoutes.js, uploadRoutes.js, adminRoutes.js)
-├── controllers/            # API logic (vehicleController.js, authController.js, adminController.js)
+├── models/                 # Mongoose schemas (Vehicle.js, User.js, PriceLog.js)
+├── routes/                 # API route definitions (vehicleRoutes.js, authRoutes.js, uploadRoutes.js, adminRoutes.js, pricingEventRoutes.js)
+├── controllers/            # API logic (vehicleController.js, authController.js, adminController.js, pricingEventController.js)
 ├── middleware/             # Custom middleware (authMiddleware.js)
 ├── public/                 # Statically served files (including uploads)
 │   └── uploads/            # Directory for user uploads

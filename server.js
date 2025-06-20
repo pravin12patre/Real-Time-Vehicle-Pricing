@@ -12,7 +12,8 @@ const path = require('path'); // Import path module
 const vehicleRoutes = require('./routes/vehicleRoutes');
 const authRoutes = require('./routes/authRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
-const adminRoutes = require('./routes/adminRoutes'); // Add this line
+const adminRoutes = require('./routes/adminRoutes');
+const pricingEventRoutes = require('./routes/pricingEventRoutes'); // Add this line
 
 const app = express();
 const PORT = process.env.PORT || 5000; // Backend server port
@@ -42,7 +43,8 @@ app.get('/', (req, res) => {
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
-app.use('/api/admin', adminRoutes); // Add this line for admin routes
+app.use('/api/admin', adminRoutes);
+app.use('/api/pricing-events', pricingEventRoutes); // Add this line
 
 // --- Global Error Handler (Basic Example) ---
 app.use((err, req, res, next) => {
